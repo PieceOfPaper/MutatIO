@@ -78,7 +78,8 @@ Unity Editor가 실행 중이면 다음 명령의 가용성을 먼저 확인합�
 ```bash
 unity command --project-path "$(pwd)"
 unity command --project-path "$(pwd)" editor_status
-unity command --project-path "$(pwd)" get_console_errors
+unity command --project-path "$(pwd)" console_status
+unity command --project-path "$(pwd)" console --level error --tail 20
 ```
 
 사용 가능한 명령은 설치된 Unity CLI와 Pipeline 버전이 보고하는 목록을 기준으로 합니다. 실행하지 못한 검증은 완료한 것처럼 표현하지 않고 사유를 남깁니다.

@@ -90,7 +90,8 @@ Unity Pipeline은 실행 중인 Unity Editor에 로컬 HTTP API로 연결하여 
 ```bash
 unity command --project-path "$(pwd)"
 unity command --project-path "$(pwd)" editor_status
-unity command --project-path "$(pwd)" get_console_errors
+unity command --project-path "$(pwd)" console_status
+unity command --project-path "$(pwd)" console --level error --tail 20
 ```
 
 첫 번째 명령으로 현재 버전에서 제공되는 명령 목록을 확인한 뒤 사용합니다. 씬과 에셋을 자동 수정하는 경우 명령 수행 후 콘솔 오류와 실제 씬 상태를 다시 확인합니다.

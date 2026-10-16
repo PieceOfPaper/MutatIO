@@ -64,7 +64,8 @@ unity command --project-path "$(pwd)"
 
 ```bash
 unity command --project-path "$(pwd)" editor_status
-unity command --project-path "$(pwd)" get_console_errors
+unity command --project-path "$(pwd)" console_status
+unity command --project-path "$(pwd)" console --level error --tail 20
 ```
 
 CLI와 패키지 버전에 따라 명령이 달라질 수 있으므로 자동화 전에 항상 명령 목록을 확인하십시오. Unity Pipeline은 실행 중인 Editor에 로컬 HTTP API로 연결하며 프로젝트 경로를 이용한 자동 탐색을 지원합니다.
