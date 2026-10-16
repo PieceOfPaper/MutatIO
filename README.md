@@ -48,24 +48,24 @@ git clone https://github.com/PieceOfPaper/MutatIO.git
 cd MutatIO
 ```
 
-Unity Hub에서 저장소 루트를 프로젝트로 추가한 뒤 `6000.3.26f1`로 여십시오.
+Unity Hub에서 저장소의 `Client/` 폴더를 프로젝트로 추가한 뒤 `6000.3.26f1`로 여십시오.
 
-현재 시작 씬은 `Assets/Scenes/SampleScene.unity`입니다.
+현재 시작 씬은 `Client/Assets/Scenes/SampleScene.unity`입니다.
 
 ### Unity CLI 연결
 
 이 프로젝트에는 `com.unity.pipeline` `0.8.0-exp.1`이 포함되어 있습니다. Unity Editor가 프로젝트를 연 상태에서 저장소 루트에서 다음 명령으로 연결 가능한 명령을 확인합니다.
 
 ```bash
-unity command --project-path "$(pwd)"
+unity command --project-path "$(pwd)/Client"
 ```
 
 연결 후에는 먼저 에디터 상태와 콘솔 오류를 확인합니다.
 
 ```bash
-unity command --project-path "$(pwd)" editor_status
-unity command --project-path "$(pwd)" console_status
-unity command --project-path "$(pwd)" console --level error --tail 20
+unity command --project-path "$(pwd)/Client" editor_status
+unity command --project-path "$(pwd)/Client" console_status
+unity command --project-path "$(pwd)/Client" console --level error --tail 20
 ```
 
 CLI와 패키지 버전에 따라 명령이 달라질 수 있으므로 자동화 전에 항상 명령 목록을 확인하십시오. Unity Pipeline은 실행 중인 Editor에 로컬 HTTP API로 연결하며 프로젝트 경로를 이용한 자동 탐색을 지원합니다.
@@ -83,9 +83,11 @@ CLI와 패키지 버전에 따라 명령이 달라질 수 있으므로 자동화
 ## 저장소 구조
 
 ```text
-Assets/             Unity 게임 코드와 에셋
-Packages/           Unity 패키지 선언
-ProjectSettings/    Unity 프로젝트 설정
+Client/             Unity 클라이언트 프로젝트
+  Assets/           Unity 게임 코드와 에셋
+  Packages/         Unity 패키지 선언
+  ProjectSettings/  Unity 프로젝트 설정
+Server/             게임 서버 프로젝트 — 서버 기술 결정 전까지 비어 있음
 docs/               기획·기술·작업 문서
 AGENTS.md           코딩 에이전트 공통 지침
 CLAUDE.md           Claude Code 진입 지침

@@ -40,9 +40,14 @@
 - 푸시는 보통 사용자가 직접 합니다. 사용자가 푸시를 요청한 경우에만 `git push`를 실행합니다.
 - 한 번 받은 커밋·푸시 요청은 그 변경에만 적용합니다. 이후 변경은 다시 요청을 받아야 합니다.
 
+## 저장소 구성
+
+- `Client/`: Unity 클라이언트 프로젝트입니다. Unity 관련 경로는 모두 이 폴더를 기준으로 합니다.
+- `Server/`: 게임 서버 프로젝트 자리입니다. 서버 기술이 결정될 때까지 비워 두며, 승인 없이 서버 코드나 프레임워크를 추가하지 않습니다.
+
 ## Unity 작업 규칙
 
-- Unity 버전은 `ProjectSettings/ProjectVersion.txt`를 따릅니다.
+- Unity 버전은 `Client/ProjectSettings/ProjectVersion.txt`를 따릅니다.
 - 씬·프리팹·ScriptableObject는 가능하면 Unity Editor 또는 Unity Pipeline으로 수정합니다.
 - Unity YAML을 직접 수정한다면 GUID, fileID, 직렬화 구조를 이해한 경우에만 최소 범위로 수정합니다.
 - 에셋을 추가·이동·삭제할 때 대응하는 `.meta` 파일을 함께 관리합니다.
@@ -56,7 +61,7 @@
 실제 구현이 시작되면 기능 경계를 우선합니다. 폴더 구조만 미리 대량 생성하지 않습니다.
 
 ```text
-Assets/MutatIO/
+Client/Assets/MutatIO/
   Runtime/
     Core/
     Creatures/
@@ -85,10 +90,10 @@ Assets/MutatIO/
 Unity Editor가 실행 중이면 다음 명령의 가용성을 먼저 확인합니다.
 
 ```bash
-unity command --project-path "$(pwd)"
-unity command --project-path "$(pwd)" editor_status
-unity command --project-path "$(pwd)" console_status
-unity command --project-path "$(pwd)" console --level error --tail 20
+unity command --project-path "$(pwd)/Client"
+unity command --project-path "$(pwd)/Client" editor_status
+unity command --project-path "$(pwd)/Client" console_status
+unity command --project-path "$(pwd)/Client" console --level error --tail 20
 ```
 
 사용 가능한 명령은 설치된 Unity CLI와 Pipeline 버전이 보고하는 목록을 기준으로 합니다. 실행하지 못한 검증은 완료한 것처럼 표현하지 않고 사유를 남깁니다.

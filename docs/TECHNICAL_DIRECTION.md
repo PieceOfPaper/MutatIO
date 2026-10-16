@@ -4,6 +4,13 @@
 - 마지막 갱신: 2026-10-17
 - 목적: 현재 프로젝트 상태와 구현 시 지켜야 할 기술적 경계 기록
 
+## 저장소 구성
+
+| 폴더 | 내용 |
+| --- | --- |
+| `Client/` | Unity 클라이언트 프로젝트 |
+| `Server/` | 게임 서버 프로젝트 자리. 서버 기술이 결정될 때까지 비어 있음 |
+
 ## 현재 프로젝트 사양
 
 | 항목 | 현재 값 |
@@ -14,10 +21,10 @@
 | Input | Unity Input System 1.20.0 |
 | Unity Pipeline | 0.8.0-exp.1 |
 | Test Framework | 1.6.0 |
-| 시작 씬 | `Assets/Scenes/SampleScene.unity` |
+| 시작 씬 | `Client/Assets/Scenes/SampleScene.unity` |
 | 목표 클라이언트 | Unity WebGL |
 
-정확한 버전은 항상 `ProjectSettings/ProjectVersion.txt`와 `Packages/manifest.json`을 기준으로 확인합니다.
+정확한 버전은 항상 `Client/ProjectSettings/ProjectVersion.txt`와 `Client/Packages/manifest.json`을 기준으로 확인합니다.
 
 ## 설계 원칙
 
@@ -88,10 +95,10 @@
 Unity Pipeline은 실행 중인 Unity Editor에 로컬 HTTP API로 연결하여 CLI나 에이전트가 명령을 실행하게 합니다.
 
 ```bash
-unity command --project-path "$(pwd)"
-unity command --project-path "$(pwd)" editor_status
-unity command --project-path "$(pwd)" console_status
-unity command --project-path "$(pwd)" console --level error --tail 20
+unity command --project-path "$(pwd)/Client"
+unity command --project-path "$(pwd)/Client" editor_status
+unity command --project-path "$(pwd)/Client" console_status
+unity command --project-path "$(pwd)/Client" console --level error --tail 20
 ```
 
 첫 번째 명령으로 현재 버전에서 제공되는 명령 목록을 확인한 뒤 사용합니다. 씬과 에셋을 자동 수정하는 경우 명령 수행 후 콘솔 오류와 실제 씬 상태를 다시 확인합니다.
@@ -108,4 +115,4 @@ unity command --project-path "$(pwd)" console --level error --tail 20
 - WebGL 배포 대상
 - 분석과 크래시 리포팅
 
-선택이 필요한 시점에는 후보를 비교하고 `docs/DECISIONS.md`에 근거와 함께 기록합니다.
+서버 기술이 결정되면 `Server/` 폴더 안에 서버 프로젝트를 구성합니다. 선택이 필요한 시점에는 후보를 비교하고 `docs/DECISIONS.md`에 근거와 함께 기록합니다.
