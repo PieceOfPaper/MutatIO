@@ -73,7 +73,7 @@ Unity는 `Client/Packages/manifest.json`의 `"com.mutatio.shared": "file:../../S
 - 가속·감속·방향 전환 응답과 크기별 속도 감소 곡선
 - 대시 배율·지속시간·쿨타임
 
-초기에는 ScriptableObject 사용을 고려하되 온라인 권위 서버의 설정 공유 방식은 네트워크 결정 후 확정합니다.
+초기에는 ScriptableObject 사용을 고려하되 권위 서버(ASP.NET Core)와 밸런스 설정을 공유하는 방식은 아직 정하지 않았습니다.
 
 ### 온라인 경계
 
@@ -139,7 +139,7 @@ Client/Assets/MutatIO/Runtime/Networking/
 | Spawning | 플레이어와 주기적 초식 먹이 생성, 초식 사망 시 육식 먹이 생성 |
 | Input | 장치 입력을 게임 명령으로 변환 |
 | UI | 외형·닉네임·조작 선택, 랭킹·설정·머리 위 게이지, 사망 결과 |
-| Networking | 네트워크 솔루션이 정해진 뒤 경계 구현 |
+| Networking | WebSocket 연결과 메시지 송수신. 도메인 로직은 `Shared/`에 두고 이 계층에 섞지 않음 |
 
 ## 이번 기획의 구현 경계
 
@@ -172,7 +172,7 @@ Client/Assets/MutatIO/Runtime/Networking/
 - 브라우저에서 지원되지 않거나 제약이 큰 API를 도입하기 전에 확인합니다.
 - 메인 스레드 비용, GC 할당, 다운로드 크기와 메모리를 관리합니다.
 - 터치 입력과 가변 해상도를 막지 않는 UI를 사용합니다.
-- 네트워크는 브라우저가 허용하는 전송 방식과 서버 배포 구조를 함께 검토해야 합니다.
+- 브라우저 제약으로 WebSocket을 사용하며, WebGL에서는 jslib 브리지(`WebGLWebSocketTransport`)로 브라우저 WebSocket을 호출합니다. 서버 배포·호스팅 구조는 아직 정하지 않았습니다.
 - 기능 완료 판정에는 필요할 경우 실제 WebGL 빌드 검증을 포함합니다.
 
 ## Unity CLI와 Pipeline
