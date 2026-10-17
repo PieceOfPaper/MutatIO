@@ -63,7 +63,7 @@ cd MutatIO
 
 Unity Hub에서 저장소의 `Client/` 폴더를 프로젝트로 추가한 뒤 `6000.3.26f1`로 여십시오.
 
-현재 시작 씬은 `Client/Assets/Scenes/SampleScene.unity`입니다. 네트워크 확인용 씬은 `Client/Assets/MutatIO/Scenes/NetworkTest.unity`, 이동·조작 확인용 씬은 `Client/Assets/MutatIO/Scenes/MovementTest.unity`입니다.
+현재 시작 씬은 `Client/Assets/Scenes/SampleScene.unity`입니다. 네트워크 확인용 씬은 `Client/Assets/MutatIO/Scenes/NetworkTest.unity`, 로컬 프로토타입 씬은 `Client/Assets/MutatIO/Scenes/Prototype.unity`입니다.
 
 ### Unity CLI 연결
 
@@ -111,17 +111,18 @@ unity command --project-path "$(pwd)/Client" run_tests --mode EditMode
 
 ## 현재 실행 및 검증 범위
 
-아직 게임플레이 대부분과 자동화된 빌드·테스트 파이프라인은 준비되지 않았습니다. 현재 구현된 것은 클라이언트–서버 연결과 Ping/Pong RTT 측정, 로컬 이동·대시와 네 가지 조작 입력(로드맵 M1·M2)입니다.
+아직 게임플레이 대부분과 자동화된 빌드·테스트 파이프라인은 준비되지 않았습니다. 현재 구현된 것은 클라이언트–서버 연결과 Ping/Pong RTT 측정, 로컬 이동·대시와 네 가지 조작 입력, 맵 경계·초식 먹이 리젠·자석 흡수·성장·카메라 줌(로드맵 M1~M3)입니다.
 
-### 이동·조작 확인
+### 로컬 프로토타입 확인
 
-1. Unity에서 `Client/Assets/MutatIO/Scenes/MovementTest.unity`를 열고 Play합니다. 서버는 필요 없습니다.
+1. Unity에서 `Client/Assets/MutatIO/Scenes/Prototype.unity`를 열고 Play합니다. 서버는 필요 없습니다.
 2. Game 뷰를 클릭해 포커스를 줍니다. 포커스가 없으면 키보드·마우스 입력이 게임에 전달되지 않습니다.
-3. 오른쪽 위 `WASD` / `Arrows` / `Pad` / `Pointer` 버튼으로 조작 방식을, `Size -` / `Size +`로 몸집을 바꿔 봅니다.
-4. 대시는 스페이스, 오른쪽 아래 `DASH` 버튼, `Pointer` 모드의 월드 좌클릭입니다. 왼쪽 위에 모드·속도·몸집·대시 상태가 표시됩니다.
-5. 이동·대시 수치는 Play 중 `PlayerCreature`의 `Local Creature Mover` 인스펙터에서 바꿀 수 있습니다. 모두 임시값입니다.
+3. 오른쪽 위 `WASD` / `Arrows` / `Pad` / `Pointer` 버튼으로 조작 방식을 바꿉니다. `Feed +20` / `Feed +200`은 먹이를 먹은 것처럼 섭취량을 더하는 개발용 버튼입니다.
+4. 대시는 스페이스, 오른쪽 아래 `DASH` 버튼, `Pointer` 모드의 월드 좌클릭입니다. 왼쪽 위에 모드·점수·몸집·속도·대시 상태·초식 먹이 수가 표시됩니다.
+5. 초록 먹이에 다가가면 끌려와 자동으로 섭취되고, 점수·몸집이 늘며 이동속도가 줄고 카메라가 넓어집니다. 붉은 선이 맵 경계입니다.
+6. 수치는 Play 중 `Prototype` 오브젝트의 `World Simulation Runner`(이동·성장·먹이)와 `Main Camera`의 `World Camera Controller`(줌) 인스펙터에서 바꿀 수 있습니다. 두 컴포넌트는 Play 시 추가되므로 Play를 끝내면 값이 기본값으로 돌아가고, 맵 크기는 시작 시에만 적용됩니다. 모두 임시값입니다.
 
-기능을 추가할 때는 최소한 다음을 확인해야 합니다. 기능을 추가할 때는 최소한 다음을 확인해야 합니다.
+기능을 추가할 때는 최소한 다음을 확인해야 합니다.
 
 1. Unity 컴파일 오류가 없는지 확인
 2. 관련 EditMode 또는 PlayMode 테스트 실행

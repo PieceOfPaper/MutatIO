@@ -351,7 +351,7 @@ GameObject:
   - component: {fileID: 1922727073}
   - component: {fileID: 1922727074}
   m_Layer: 0
-  m_Name: MovementTest
+  m_Name: Prototype
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -385,8 +385,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: MutatIO.Runtime::MutatIO.Prototype.MovementTestBootstrap
   initialMode: 4
-  cameraOrthographicSize: 8
-  gridSize: {x: 200, y: 200}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -15,6 +15,35 @@ namespace MutatIO.Prototype
 
         private static Sprite circle;
         private static Sprite grid;
+        private static Sprite square;
+
+        /// <summary>한 변이 1 월드 단위인 흰색 사각형입니다.</summary>
+        public static Sprite Square
+        {
+            get
+            {
+                if (square == null)
+                {
+                    var texture = new Texture2D(4, 4, TextureFormat.RGBA32, false)
+                    {
+                        name = "PrototypeSquare",
+                        wrapMode = TextureWrapMode.Clamp,
+                        filterMode = FilterMode.Point,
+                    };
+                    var pixels = new Color32[16];
+                    for (var i = 0; i < pixels.Length; i++)
+                    {
+                        pixels[i] = new Color32(255, 255, 255, 255);
+                    }
+
+                    texture.SetPixels32(pixels);
+                    texture.Apply();
+                    square = Sprite.Create(texture, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 4f);
+                }
+
+                return square;
+            }
+        }
 
         /// <summary>지름 1 월드 단위의 흰색 원입니다.</summary>
         public static Sprite Circle

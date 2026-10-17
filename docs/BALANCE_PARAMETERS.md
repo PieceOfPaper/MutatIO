@@ -47,6 +47,7 @@
 | MAGNET-02 | 흡수 이동속도·가속 | 속도 또는 곡선 | 연출과 경쟁 판정 시차 |
 | MAGNET-03 | 섭취 완료 거리 | 월드 단위 | 보상 시점 명확성 |
 | MAGNET-04 | 몸집별 흡수 반경 변화 | 곡선 | 적용 여부를 먼저 결정 |
+| MAGNET-05 | 흡수 해제 여유 거리 | 월드 단위 | 흡수 도중 대상이 멀어질 때 처리 결정 후 적용 |
 
 ## 3. 허기·성장·변이·사망
 
@@ -66,6 +67,7 @@
 | CONTACT-01 | 접촉 반경 계수 | 외형 대비 배율 | 보이는 접촉과 판정 일치 |
 | CONTACT-02 | 크기 우위에 필요한 최소 차이 | 차이 또는 비율 | 엄격한 대소 비교/안전 여유 여부부터 결정 |
 | SPAWN-01 | 안전 거리·보호 시간 | 월드 단위·초 | 보호 사용 여부부터 결정 |
+| WORLD-01 | 맵 크기 | 월드 단위(가로·세로) | 인원 대비 밀도와 이동 시간 |
 
 육식 사망 드롭량은 현재 규칙상 0이며 밸런스 조정으로 임의로 바꾸지 않습니다.
 
@@ -96,6 +98,20 @@
 | DASH-04 | 미구현(임시안: 비용 없음) | — |
 | INPUT-01 | `VirtualJoystick.radius`, `deadZone` (`Client/.../Runtime/Input`) | 반경 65 캔버스 단위(테스트 씬), 데드존 0.15 |
 | INPUT-02 | `PlayerCommandSource.pointerDeadZone` — 화면 높이 대비 | 0.03 |
+| WORLD-01 | `WorldSettings.width`, `height` (`Shared/Runtime/World`) | 80 × 80 |
+| FOOD-01 | `FoodSettings.plantSpacing` (`Shared/Runtime/Feeding`) | 1.5 |
+| FOOD-02 | `FoodSettings.plantRegenInterval` — 하나씩 생성 | 0.25초 |
+| FOOD-03 | `FoodSettings.maxPlantCount` — 시작 시 이 개수까지 채움 | 250개 |
+| FOOD-04 | `FoodSettings.plantIntake` — 초식 먹이 섭취량(점수) | 1 |
+| MAGNET-01, MAGNET-04 | `FoodSettings.magnetRange` — 몸 가장자리 기준 | 1.5 |
+| MAGNET-02 | `FoodSettings.magnetPullSpeed` | 12 월드 단위/초 |
+| MAGNET-03 | `FoodSettings.consumeDistance` — 몸 가장자리 기준 | 0 |
+| MAGNET-05 | `FoodSettings.magnetReleaseMargin` | 1 |
+| GROW-01 | `GrowthSettings.areaPerIntake` — 몸집 = √(1 + 섭취량 × 값) | 0.05 |
+| GROW-02 | `GrowthSettings.maxSize` — 초기 몸집은 1 고정 | 0(상한 없음) |
+| CAMERA-01 | `CameraZoomSettings.baseHalfHeight`, `sizeExponent` (`Client/.../Runtime/Cameras`) — 직교 크기 = 기본값 × 몸집^지수 | 8, 0.6 |
+| CAMERA-02 | `CameraZoomSettings.minHalfHeight`, `maxHalfHeight` | 8, 30 |
+| CAMERA-03 | `CameraZoomSettings.zoomSmoothTime` | 0.4초 |
 
 ## 6. 테스트 기록 양식
 

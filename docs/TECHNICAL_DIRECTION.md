@@ -129,8 +129,7 @@ Client/Assets/MutatIO/Runtime/
   Input/DashButton.cs           화면 대시 버튼
   Input/PointerFollow.cs        화면상 캐릭터 → 포인터 방향 계산
   Input/UiPointerFilter.cs      화면 좌표가 UI 위인지 직접 레이캐스트로 판정
-  Creatures/LocalCreatureMover.cs  로컬 개체에 MovementSystem 적용·표시
-  Prototype/                    MovementTest 씬 구성용 개발 코드(런타임 생성 스프라이트·UI)
+  Prototype/                    Prototype 씬 구성용 개발 코드(런타임 생성 스프라이트·UI)
 ```
 
 - 관성은 속도 벡터가 목표 속도로 일정 비율만큼 다가가는 방식입니다. 방향 전환도 같은 가속 응답을 쓰며 회전 반경 제한은 없습니다.
@@ -152,6 +151,43 @@ Client/Assets/MutatIO/Runtime/
 | PC 커서가 UI 위일 때 | 새 방향을 만들지 않고 직전 방향 유지 |
 | 모바일 터치 추종 | 기획서의 테스트 제안: 월드 영역을 누르는 동안 추종, 떼면 입력 0, UI에서 시작한 터치는 무시 |
 | 정지 판정 | 이동 입력 길이 0.05 이하 |
+
+### 월드·먹이·성장·카메라 — 로드맵 M3
+
+```text
+Shared/Runtime/
+  World/WorldSimulation.cs   생명체 이동 → 맵 경계 → 먹이 흡수·섭취 → 성장을 Step(dt)으로 진행
+  World/WorldSettings.cs     맵 크기와 이동·성장·먹이 설정 묶음
+  World/WorldBounds.cs       원점 중심 사각 맵 경계, 원 단위 위치 제한
+  Creatures/Creature.cs      ID, 이동 상태, 누적 섭취량(점수), 몸집, 다음 스텝 명령
+  Feeding/FoodField.cs       초식 먹이 리젠, 흡수 대상 지정, 끌어당김, 섭취 판정
+  Growth/GrowthSystem.cs     섭취량 → 몸집
+Client/Assets/MutatIO/Runtime/
+  World/WorldSimulationRunner.cs  매 프레임 내 명령을 넣고 Time.deltaTime으로 Step
+  Creatures/CreatureView.cs       생명체 상태 → Transform
+  Feeding/FoodFieldView.cs        먹이 생성·섭취 이벤트로 스프라이트 재사용 표시
+  Cameras/WorldCameraController.cs  내 생명체 추적과 몸집 연동 줌
+```
+
+- 클라이언트 표시 컴포넌트는 시뮬레이션 상태를 읽기만 하고 규칙을 계산하지 않습니다. 서버로 옮길 때 `WorldSimulation`을 그대로 사용하는 것이 목표입니다.
+- 먹이는 섭취 시 목록에서 즉시 제거되므로 보상이 한 번만 지급됩니다. 끌려가는 위치(연출)와 섭취 판정(보상)은 같은 데이터에서 나오지만 섭취는 몸 가장자리 도달 시점 하나뿐입니다.
+- 먹이 랜덤 배치는 시드가 있는 `System.Random`을 사용합니다.
+- 몸집은 섭취량에 따라 면적이 늘도록 `√(1 + 섭취량 × 계수)`입니다. 외형 지름과 충돌 지름은 현재 같습니다.
+- 카메라는 직교 크기 `기본값 × 몸집^지수`를 최소·최대로 제한하고 시간 상수 방식으로 부드럽게 바꿉니다. UI는 Screen Space 캔버스라 영향을 받지 않습니다.
+- 먹이·생명체 탐색은 전수 비교(먹이 수 × 생명체 수)입니다. 생명체가 많아지면 공간 분할이 필요합니다.
+
+**임시안(2026-10-17 사용자 승인, 플레이로 확인 예정 — 확정 규칙 아님)**
+
+| 미결정 항목 | 현재 구현 |
+| --- | --- |
+| 초식 먹이 배치 | 맵 안 랜덤 위치 + 기존 먹이와 최소 간격. 시작 시 최대 개수까지 채움 |
+| 점수와 질량 분리 | 분리하지 않음. 누적 섭취량 하나가 점수이자 몸집의 근거 |
+| 맵 | 고정 크기 사각형. 경계 밖으로 나갈 수 없음 |
+| 흡수 반경과 몸집 | 몸 반경 + 고정 거리. 몸이 커지면 몸 반경만큼 함께 넓어짐 |
+| 여러 개체의 같은 먹이 | 흡수 반경 안에서 가장 가까운 개체가 끌어당기고, 그 개체가 사라지거나 일정 거리 이상 멀어질 때까지 유지 |
+| 흡수 도중 대상이 멀어짐 | 끌림을 해제하고 먹이는 그 자리에 남음 |
+| 외형과 충돌 반경 | 같음(몸집 = 지름) |
+| 맵 경계 근처 카메라 | 제한 없이 내 생명체를 중앙에 둠 |
 
 ### 플랫폼별 설정
 

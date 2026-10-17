@@ -1,5 +1,8 @@
+using MutatIO.Cameras;
 using MutatIO.Creatures;
+using MutatIO.Feeding;
 using MutatIO.Input;
+using MutatIO.World;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -8,24 +11,20 @@ using UnityEngine.UI;
 namespace MutatIO.Prototype
 {
     /// <summary>
-    /// 이동·입력 확인용 테스트 씬(M2)을 런타임에 구성합니다. 원 하나를 네 가지 조작으로 움직이고 대시해 볼 수 있습니다.
-    /// 화면 버튼으로 조작 방식과 몸집을 바꿉니다. 첫 화면(M5)이 생기기 전까지의 개발용 구성입니다.
+    /// 로컬 프로토타입 씬을 런타임에 구성합니다. Shared 월드 시뮬레이션을 실행하고 맵·먹이·내 생명체·조작 UI를 만듭니다.
+    /// M2 이동·조작 확인, M3 먹이·성장·카메라 줌 확인에 사용합니다. 첫 화면(M5)이 생기기 전까지의 개발용 구성입니다.
     /// WebGL 기본 폰트에 한글 글리프가 없으므로 화면 문구는 영어로 둡니다.
     /// </summary>
-    [AddComponentMenu("MutatIO/Prototype/Movement Test Bootstrap")]
-    public sealed class MovementTestBootstrap : MonoBehaviour
+    [AddComponentMenu("MutatIO/Prototype/Prototype Bootstrap")]
+    public sealed class PrototypeBootstrap : MonoBehaviour
     {
-        private const float SizeStep = 0.5f;
-        private const float MaxTestSize = 20f;
+        private const float MapBorderThickness = 0.3f;
 
         [SerializeField] private ControlMode initialMode = ControlMode.PointerFollow;
-        [SerializeField] private float cameraOrthographicSize = 8f;
-        [SerializeField] private Vector2 gridSize = new Vector2(120f, 120f);
 
         private Camera worldCamera;
-        private Transform grid;
+        private WorldSimulationRunner runner;
         private PlayerCommandSource commandSource;
-        private LocalCreatureMover creature;
         private GameObject joystickRoot;
         private Text statusText;
         private Font font;
@@ -37,12 +36,15 @@ namespace MutatIO.Prototype
             if (worldCamera != null)
             {
                 worldCamera.orthographic = true;
-                worldCamera.orthographicSize = cameraOrthographicSize;
-                worldCamera.backgroundColor = new Color(0.08f, 0.1f, 0.13f);
+                worldCamera.backgroundColor = new Color(0.04f, 0.05f, 0.07f);
             }
 
-            CreateGrid();
+            runner = gameObject.AddComponent<WorldSimulationRunner>();
+            CreateMap();
+            var foodView = new GameObject("FoodField").AddComponent<FoodFieldView>();
+            foodView.Bind(runner.Simulation, PrototypeSprites.Circle);
             var creatureObject = CreateCreature();
+
             EnsureEventSystem();
             var canvas = CreateCanvas();
             var joystick = CreateJoystick(canvas);
@@ -51,34 +53,33 @@ namespace MutatIO.Prototype
 
             commandSource = gameObject.AddComponent<PlayerCommandSource>();
             commandSource.Bind(worldCamera, creatureObject.transform, joystick, dashButton);
-            creature.Bind(commandSource);
+            runner.SetCommandSource(commandSource);
             SetMode(initialMode);
+
+            if (worldCamera != null)
+            {
+                var cameraController = worldCamera.GetComponent<WorldCameraController>();
+                if (cameraController == null)
+                {
+                    cameraController = worldCamera.gameObject.AddComponent<WorldCameraController>();
+                }
+
+                cameraController.Follow(runner.LocalPlayer);
+            }
         }
 
         private void Update()
         {
-            var state = creature.State;
+            var player = runner.LocalPlayer;
+            var state = player.Movement;
             var dash = state.IsDashing ? "dashing"
                 : state.DashCooldownRemaining > 0f ? $"{state.DashCooldownRemaining:0.0}s"
                 : "ready";
             statusText.text =
                 $"Mode: {commandSource.Mode}\n" +
-                $"Speed: {state.Velocity.Length():0.00}  Size: {creature.Size:0.0}\n" +
-                $"Dash: {dash}";
-        }
-
-        private void LateUpdate()
-        {
-            if (worldCamera != null)
-            {
-                var target = creature.transform.position;
-                worldCamera.transform.position = new Vector3(target.x, target.y, worldCamera.transform.position.z);
-            }
-
-            // 맵 경계(M3) 전까지는 격자가 칸 단위로 카메라를 따라가 어디서든 이동이 보이게 합니다.
-            var cell = PrototypeSprites.GridCellWorldSize;
-            var center = creature.transform.position;
-            grid.position = new Vector3(Mathf.Round(center.x / cell) * cell, Mathf.Round(center.y / cell) * cell, 0f);
+                $"Score: {player.Intake:0}  Size: {player.Size:0.00}\n" +
+                $"Speed: {state.Velocity.Length():0.00}  Dash: {dash}\n" +
+                $"Plants: {runner.Simulation.Food.PlantCount}";
         }
 
         private void SetMode(ControlMode mode)
@@ -87,20 +88,44 @@ namespace MutatIO.Prototype
             joystickRoot.SetActive(mode == ControlMode.VirtualPad);
         }
 
-        private void ChangeSize(float delta)
+        private void Feed(float intake)
         {
-            creature.Size = Mathf.Min(MaxTestSize, creature.Size + delta);
+            // 개발용: 먹이를 먹은 것처럼 섭취량을 더해 성장·속도·줌 변화를 빠르게 확인합니다.
+            runner.LocalPlayer.AddIntake(intake, runner.Simulation.Settings.growth);
         }
 
-        private void CreateGrid()
+        private void CreateMap()
         {
-            var gridObject = new GameObject("Grid");
-            var renderer = gridObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = PrototypeSprites.Grid;
-            renderer.drawMode = SpriteDrawMode.Tiled;
-            renderer.size = gridSize;
-            renderer.sortingOrder = -10;
-            grid = gridObject.transform;
+            var bounds = runner.Simulation.Bounds;
+            var size = new Vector2(bounds.HalfWidth * 2f, bounds.HalfHeight * 2f);
+
+            var ground = new GameObject("MapGround").AddComponent<SpriteRenderer>();
+            ground.sprite = PrototypeSprites.Square;
+            ground.color = new Color(0.08f, 0.1f, 0.13f);
+            ground.transform.localScale = new Vector3(size.x, size.y, 1f);
+            ground.sortingOrder = -20;
+
+            var grid = new GameObject("MapGrid").AddComponent<SpriteRenderer>();
+            grid.sprite = PrototypeSprites.Grid;
+            grid.drawMode = SpriteDrawMode.Tiled;
+            grid.size = size;
+            grid.sortingOrder = -10;
+
+            var borderColor = new Color(0.9f, 0.4f, 0.4f, 0.8f);
+            CreateBorder(new Vector2(0f, bounds.HalfHeight), new Vector2(size.x + MapBorderThickness * 2f, MapBorderThickness), borderColor);
+            CreateBorder(new Vector2(0f, -bounds.HalfHeight), new Vector2(size.x + MapBorderThickness * 2f, MapBorderThickness), borderColor);
+            CreateBorder(new Vector2(bounds.HalfWidth, 0f), new Vector2(MapBorderThickness, size.y), borderColor);
+            CreateBorder(new Vector2(-bounds.HalfWidth, 0f), new Vector2(MapBorderThickness, size.y), borderColor);
+        }
+
+        private static void CreateBorder(Vector2 center, Vector2 size, Color color)
+        {
+            var border = new GameObject("MapBorder").AddComponent<SpriteRenderer>();
+            border.sprite = PrototypeSprites.Square;
+            border.color = color;
+            border.transform.position = center;
+            border.transform.localScale = new Vector3(size.x, size.y, 1f);
+            border.sortingOrder = -5;
         }
 
         private GameObject CreateCreature()
@@ -109,7 +134,7 @@ namespace MutatIO.Prototype
             var renderer = creatureObject.AddComponent<SpriteRenderer>();
             renderer.sprite = PrototypeSprites.Circle;
             renderer.color = new Color(0.55f, 0.85f, 1f);
-            creature = creatureObject.AddComponent<LocalCreatureMover>();
+            creatureObject.AddComponent<CreatureView>().Bind(runner.LocalPlayer);
             return creatureObject;
         }
 
@@ -164,7 +189,7 @@ namespace MutatIO.Prototype
 
         private void CreateControls(RectTransform canvas)
         {
-            var status = CreateRect("Status", canvas, new Vector2(0f, 1f), new Vector2(240f, -80f), new Vector2(440f, 130f));
+            var status = CreateRect("Status", canvas, new Vector2(0f, 1f), new Vector2(240f, -95f), new Vector2(440f, 170f));
             statusText = CreateLabel(status, string.Empty, 28);
             statusText.alignment = TextAnchor.UpperLeft;
 
@@ -176,8 +201,8 @@ namespace MutatIO.Prototype
                 CreateButton(canvas, labels[i], new Vector2(-90f - (modes.Length - 1 - i) * 170f, -50f), () => SetMode(mode));
             }
 
-            CreateButton(canvas, "Size -", new Vector2(-260f, -130f), () => ChangeSize(-SizeStep));
-            CreateButton(canvas, "Size +", new Vector2(-90f, -130f), () => ChangeSize(SizeStep));
+            CreateButton(canvas, "Feed +20", new Vector2(-260f, -130f), () => Feed(20f));
+            CreateButton(canvas, "Feed +200", new Vector2(-90f, -130f), () => Feed(200f));
         }
 
         private void CreateButton(RectTransform canvas, string label, Vector2 position, UnityEngine.Events.UnityAction onClick)

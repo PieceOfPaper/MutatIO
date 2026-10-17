@@ -51,8 +51,8 @@
 ### 진행 상황
 
 - [x] M1. 이동 코어 — `Shared/Runtime/Movement`, xUnit·EditMode 테스트
-- [x] M2. 입력 계층 — `MovementTest` 씬에서 사용자 조작 확인 완료(Editor). 모바일·WebGL 미확인
-- [ ] M3. 먹이·성장
+- [x] M2. 입력 계층 — `Prototype` 씬(구 `MovementTest`)에서 사용자 조작 확인 완료(Editor). 모바일·WebGL 미확인
+- [x] M3. 먹이·성장 — `Prototype` 씬에서 사용자 확인 완료(Editor)
 - [ ] M4. 허기·플레이 흐름
 - [ ] M5. 첫 화면
 - [ ] M6. 생태계
