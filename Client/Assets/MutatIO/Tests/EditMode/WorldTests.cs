@@ -31,6 +31,27 @@ namespace MutatIO.Tests.EditMode
         }
 
         [Test]
+        public void World_StarvationRemovesCreatureAndKeepsScore()
+        {
+            var settings = new WorldSettings();
+            settings.food.maxPlantCount = 0;
+            settings.hunger.decayPerSecond = 10f;
+            var world = new WorldSimulation(settings, 1);
+            var creature = world.SpawnCreature(System.Numerics.Vector2.Zero);
+            creature.AddIntake(12f, settings.growth);
+            creature.SetSatiety(1f);
+            var died = 0;
+            world.CreatureDied += death => died++;
+
+            world.Step(0.2f);
+
+            Assert.That(died, Is.EqualTo(1));
+            Assert.That(creature.IsAlive, Is.False);
+            Assert.That(creature.Intake, Is.EqualTo(12f));
+            Assert.That(world.Creatures, Is.Empty);
+        }
+
+        [Test]
         public void CameraZoom_WidensWithSizeWithinLimits()
         {
             var zoom = new CameraZoomSettings();

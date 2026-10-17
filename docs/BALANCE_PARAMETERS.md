@@ -121,6 +121,10 @@ M3 구현은 2026-10-17 타일 리젠·흡수 규칙 확정 이전의 임시안�
 | MAGNET-02 | `FoodSettings.magnetPullSpeed` | 12 월드 단위/초 |
 | MAGNET-03 | `FoodSettings.consumeDistance` — 몸 가장자리 기준 | 0 |
 | (MAGNET-05) | `FoodSettings.magnetReleaseMargin` — 대상이 멀어지면 흡수 해제 | 1 — 확정 기획과 차이: 기획은 사망·이탈·변이 시에만 흡수 취소 |
+| HUNGER-01 | `HungerSettings.maxSatiety`, `startSatiety` (`Shared/Runtime/Hunger`) | 100, 100 |
+| HUNGER-02 | `HungerSettings.decayPerSecond` | 2 게이지/초(가득 찬 상태에서 50초 생존) |
+| HUNGER-03 | 미구현(임시안: 배율 없음) | — |
+| FOOD-05 | `HungerSettings.plantSatiety` — 초식 먹이 1개 회복량, 최대 포만에서 멈춤 | 4(2초 분량). 육식 먹이는 M6 |
 | GROW-01 | `GrowthSettings.areaPerIntake` — 몸집 = √(1 + 섭취량 × 값) | 0.05 |
 | GROW-02 | `GrowthSettings.maxSize` — 초기 몸집은 1 고정 | 0(상한 없음) |
 | CAMERA-01 | `CameraZoomSettings.baseHalfHeight`, `sizeExponent` (`Client/.../Runtime/Cameras`) — 직교 크기 = 기본값 × 몸집^지수 | 8, 0.6 |

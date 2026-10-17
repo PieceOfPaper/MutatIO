@@ -59,6 +59,13 @@ namespace MutatIO.Input
             dashButton = button;
         }
 
+        /// <summary>포인터 방향의 기준이 되는 내 생명체 표시를 바꿉니다. 새로 입장할 때 사용합니다.</summary>
+        public void SetCharacter(Transform characterTransform)
+        {
+            character = characterTransform;
+            ResetPointerState();
+        }
+
         public PlayerCommand ReadCommand()
         {
             var move = ReadMove();

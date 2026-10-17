@@ -1,3 +1,4 @@
+using System;
 using MutatIO.Shared.Growth;
 using MutatIO.Shared.Movement;
 
@@ -32,6 +33,12 @@ namespace MutatIO.Shared.Creatures
 
         public float Radius => Size * RadiusPerSize;
 
+        /// <summary>남은 포만량입니다. 0이 되면 사망합니다.</summary>
+        public float Satiety { get; private set; }
+
+        /// <summary>사망하여 월드에서 제거되면 false입니다.</summary>
+        public bool IsAlive { get; private set; } = true;
+
         /// <summary>다음 스텝에 적용할 명령입니다. 대시 입력은 한 스텝에만 적용됩니다.</summary>
         public PlayerCommand Command { get; set; }
 
@@ -39,6 +46,16 @@ namespace MutatIO.Shared.Creatures
         {
             Intake += amount;
             Size = GrowthSystem.GetSize(Intake, growth);
+        }
+
+        public void SetSatiety(float satiety)
+        {
+            Satiety = Math.Max(0f, satiety);
+        }
+
+        internal void MarkDead()
+        {
+            IsAlive = false;
         }
     }
 }

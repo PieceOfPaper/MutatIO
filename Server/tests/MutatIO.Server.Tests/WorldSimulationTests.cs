@@ -2,6 +2,7 @@ using System.Numerics;
 using MutatIO.Shared.Creatures;
 using MutatIO.Shared.Feeding;
 using MutatIO.Shared.Growth;
+using MutatIO.Shared.Hunger;
 using MutatIO.Shared.Movement;
 using MutatIO.Shared.World;
 
@@ -202,6 +203,95 @@ public sealed class WorldSimulationTests
 
         Assert.True(creature.Movement.IsDashing);
         Assert.False(creature.Command.Dash);
+    }
+
+    [Fact]
+    public void Hunger_StartsAtStartSatietyAndDrainsOverTime()
+    {
+        var world = CreateWorld(maxPlants: 0);
+        world.Settings.hunger.startSatiety = 50f;
+        world.Settings.hunger.decayPerSecond = 10f;
+        var creature = world.SpawnCreature(Vector2.Zero);
+        Assert.Equal(50f, creature.Satiety);
+
+        world.Step(1f);
+
+        Assert.Equal(40f, creature.Satiety, 4);
+    }
+
+    [Fact]
+    public void Hunger_EatingRestoresSatietyUpToMax()
+    {
+        var hunger = new HungerSettings { maxSatiety = 100f, plantSatiety = 30f };
+
+        Assert.Equal(80f, HungerSystem.Restore(50f, HungerSystem.GetSatietyGain(FoodKind.Plant, hunger), hunger), 4);
+        Assert.Equal(100f, HungerSystem.Restore(90f, HungerSystem.GetSatietyGain(FoodKind.Plant, hunger), hunger), 4);
+    }
+
+    [Fact]
+    public void Hunger_EatingInWorldRestoresSatiety()
+    {
+        var world = CreateWorld(maxPlants: 0);
+        world.Settings.hunger.decayPerSecond = 0f;
+        world.Settings.hunger.plantSatiety = 5f;
+        var creature = world.SpawnCreature(Vector2.Zero);
+        creature.SetSatiety(10f);
+        world.Food.Spawn(FoodKind.Plant, new Vector2(1f, 0f), 1f);
+
+        for (var i = 0; i < 60; i++)
+        {
+            world.Step(Dt);
+        }
+
+        Assert.Equal(15f, creature.Satiety, 4);
+    }
+
+    [Fact]
+    public void Hunger_StarvationKillsWithoutReducingScoreOrSize()
+    {
+        var world = CreateWorld(maxPlants: 0);
+        world.Settings.hunger.decayPerSecond = 10f;
+        var creature = world.SpawnCreature(Vector2.Zero);
+        creature.AddIntake(40f, world.Settings.growth);
+        var sizeBefore = creature.Size;
+        creature.SetSatiety(5f);
+        var deaths = new List<CreatureDeath>();
+        world.CreatureDied += deaths.Add;
+
+        world.Step(0.4f);
+        Assert.True(creature.IsAlive);
+        Assert.Equal(40f, creature.Intake);
+        Assert.Equal(sizeBefore, creature.Size);
+
+        world.Step(0.2f);
+
+        var death = Assert.Single(deaths);
+        Assert.Same(creature, death.Creature);
+        Assert.Equal(DeathCause.Starvation, death.Cause);
+        Assert.False(creature.IsAlive);
+        Assert.Empty(world.Creatures);
+        Assert.Equal(40f, creature.Intake);
+        Assert.Equal(sizeBefore, creature.Size);
+    }
+
+    [Fact]
+    public void Hunger_DeathReleasesAttractedFoodAtCurrentPosition()
+    {
+        var world = CreateWorld(maxPlants: 0);
+        var creature = world.SpawnCreature(Vector2.Zero);
+        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(2f, 0f), 1f);
+        world.Step(Dt);
+        Assert.Equal(creature.Id, food.AttractorId);
+
+        creature.SetSatiety(0f);
+        world.Step(Dt);
+        var stoppedAt = food.Position;
+        world.Step(Dt);
+
+        Assert.False(creature.IsAlive);
+        Assert.Equal(FoodItem.NoAttractor, food.AttractorId);
+        Assert.Equal(stoppedAt, food.Position);
+        Assert.Single(world.Food.Items);
     }
 
     private static WorldSimulation CreateWorld(int maxPlants)

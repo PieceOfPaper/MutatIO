@@ -1,6 +1,7 @@
 using System;
 using MutatIO.Shared.Feeding;
 using MutatIO.Shared.Growth;
+using MutatIO.Shared.Hunger;
 using MutatIO.Shared.Movement;
 
 namespace MutatIO.Shared.World
@@ -21,5 +22,6 @@ namespace MutatIO.Shared.World
         public MovementSettings movement = new MovementSettings();
         public GrowthSettings growth = new GrowthSettings();
         public FoodSettings food = new FoodSettings();
+        public HungerSettings hunger = new HungerSettings();
     }
 }

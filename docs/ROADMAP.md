@@ -55,7 +55,7 @@
 - [x] M1. 이동 코어 — `Shared/Runtime/Movement`, xUnit·EditMode 테스트
 - [x] M2. 입력 계층 — `Prototype` 씬(구 `MovementTest`)에서 사용자 조작 확인 완료(Editor). 모바일·WebGL 미확인
 - [x] M3. 먹이·성장 — `Prototype` 씬에서 사용자 확인 완료(Editor). 타일 리젠 확정 이전 임시안(맵 전체 랜덤 배치, 80×80 맵, 거리 기반 흡수 해제)으로 구현했으며, 확정 기획과의 차이는 M7 완료 후 일괄 정리
-- [ ] M4. 허기·플레이 흐름
+- [x] M4. 허기·플레이 흐름 — 포만 감소·굶주림 사망, 결과 화면, 첫 화면(자리표시) 복귀. Editor Play Mode에서 흐름 확인, 사용자 플레이 확인 전
 - [ ] M5. 첫 화면
 - [ ] M6. 생태계
 - [ ] M7. HUD
