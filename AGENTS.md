@@ -8,7 +8,7 @@
 
 1. `README.md`
 2. `docs/GAME_DESIGN.md`
-3. `docs/OPEN_DESIGN_QUESTIONS.md`
+3. `docs/OPEN_DESIGN_QUESTIONS.md`와 `docs/BALANCE_PARAMETERS.md`
 4. `docs/TECHNICAL_DIRECTION.md`
 5. `docs/DEVELOPMENT_WORKFLOW.md`
 6. `docs/DECISIONS.md`
@@ -114,6 +114,8 @@ dotnet test Server/MutatIO.Server.slnx
 - 게임 규칙 변경: `docs/GAME_DESIGN.md`
 - 새 결정 또는 기존 결정 번복: `docs/DECISIONS.md`
 - 미결정 항목의 추가·해결: `docs/OPEN_DESIGN_QUESTIONS.md`
+- 테스트 수치·곡선·채택 근거: `docs/BALANCE_PARAMETERS.md`
+- 레퍼런스의 검증 결과와 미확인 조건: `docs/INPUT_REFERENCE.md`
 - 기술 스택·아키텍처·플랫폼 변경: `docs/TECHNICAL_DIRECTION.md`
 - 설치·실행·검증 방법 변경: `README.md`
 - 개발 단계 변경: `docs/ROADMAP.md`
