@@ -23,6 +23,9 @@ namespace MutatIO.Shared.Creatures
 
         public int Id { get; }
 
+        /// <summary>머리 위와 랭킹에 표시하는 이름입니다. 사람은 닉네임, 봇은 봇 이름이며 빈 문자열일 수 있습니다.</summary>
+        public string Name { get; set; } = string.Empty;
+
         /// <summary>이번 생에 섭취 완료한 먹이 개수이자 점수입니다. 먹이 1개 = 1점이며 몸집은 이 값에서 계산합니다.</summary>
         public int Intake { get; private set; }
 

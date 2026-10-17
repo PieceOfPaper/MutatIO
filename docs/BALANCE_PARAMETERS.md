@@ -172,6 +172,8 @@ M1~M5 구현은 2026-10-17 M6 착수 전에 확정 기획에 맞춰 정리했습
 | CAMERA-02 | `CameraZoomSettings.minHalfExtent`, `maxHalfExtent` | 8, 30 |
 | CAMERA-03 | `CameraZoomSettings.zoomSmoothTime` | 0.4초 |
 | UI-01 | `PlayerProfile.MaxNicknameLength` (`Client/.../Runtime/Profile`) — 앞뒤 공백 제거 후 텍스트 요소(문자) 수 기준 | 12자 |
+| HUD-01 | `RankingView.maxEntries`, `refreshInterval` (`Client/.../Runtime/UI`) | 10명, 0.5초 |
+| HUD-02 | `CreatureHeadView.screenScale`, `gap` (`Client/.../Runtime/Creatures`) — 표시 단위 = 카메라 세로 절반 범위 × 비율. 게이지는 장식(귀) 윗끝 + 간격 위, 길이 2단위 | 0.12(시작 시 약 0.96 월드 단위), 0.35단위 |
 | BOT-01 | `BotSettings.minPopulation` (`Shared/Runtime/Bots`) — 접속한 사람은 첫 화면·결과 화면에 있어도 한 자리 | 5명(프로토타입: 나 + 봇 4) |
 | BOT-02 | `BotSettings.joinDelayMin`, `joinDelayMax` | 3~10초 |
 | BOT-03 | `BotSettings.skillLevel`, `skillVariance` — 봇별 수준 = 전체 수준 ± 편차, 0~1로 제한 | 0.6, ±0.15 |

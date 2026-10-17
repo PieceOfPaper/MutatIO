@@ -46,9 +46,9 @@ namespace MutatIO.Shared.World
 
         public IReadOnlyList<Creature> Creatures => creatures;
 
-        public Creature SpawnCreature(Vector2 position)
+        public Creature SpawnCreature(Vector2 position, string name = null)
         {
-            var creature = new Creature(nextCreatureId++, MovementState.At(position));
+            var creature = new Creature(nextCreatureId++, MovementState.At(position)) { Name = name ?? string.Empty };
             creature.SetSatiety(Math.Min(Settings.hunger.startSatiety, Settings.hunger.maxSatiety));
             Bounds.ClampCircle(ref creature.Movement, creature.Radius);
             creatures.Add(creature);

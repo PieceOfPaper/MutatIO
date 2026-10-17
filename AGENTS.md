@@ -68,7 +68,7 @@
 Client/Assets/MutatIO/
   Runtime/
     Core/
-    Creatures/      생명체 표시(CreatureView) — 구현됨
+    Creatures/      생명체 표시(CreatureView)·머리 위 닉네임·포만(CreatureHeadView) — 구현됨
     Feeding/        먹이 표시(FoodFieldView) — 구현됨
     Flow/           첫 화면·플레이·결과 상태 전환(GameFlow) — 구현됨
     Profile/        외형·닉네임·조작 선택과 PlayerPrefs 저장·복원 — 구현됨
@@ -79,7 +79,7 @@ Client/Assets/MutatIO/
     World/          Shared 월드 시뮬레이션 실행기·봇 실행 — 구현됨
     Input/          조작 4모드 → PlayerCommand, 가상패드·대시 버튼 — 구현됨
     Networking/     전송 계층(Transport/)과 NetworkClient — 구현됨
-    UI/
+    UI/             랭킹 표시(RankingView) — 구현됨
   Editor/
   Tests/
     EditMode/

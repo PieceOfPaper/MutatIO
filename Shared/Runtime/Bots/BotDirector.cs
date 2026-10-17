@@ -132,7 +132,7 @@ namespace MutatIO.Shared.Bots
         private Bot Join()
         {
             var name = BotNames.Pick(random, namesInUse);
-            var creature = world.SpawnCreature(FindSpawnPosition());
+            var creature = world.SpawnCreature(FindSpawnPosition(), name);
             var offset = (NextFloat() * 2f - 1f) * Math.Max(0f, settings.skillVariance);
             var bot = new Bot(name, creature, new BotBrain(creature, CreateSkill(offset), new Random(random.Next())), offset);
             bots.Add(bot);

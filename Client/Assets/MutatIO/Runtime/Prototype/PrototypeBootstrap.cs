@@ -9,6 +9,7 @@ using MutatIO.Shared.Bots;
 using MutatIO.Shared.Creatures;
 using MutatIO.Shared.Feeding;
 using MutatIO.Shared.Mutation;
+using MutatIO.UI;
 using MutatIO.World;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -20,7 +21,7 @@ namespace MutatIO.Prototype
     /// <summary>
     /// 로컬 프로토타입 씬을 런타임에 구성합니다. Shared 월드 시뮬레이션을 실행하고 맵·먹이·내 생명체·조작 UI를 만듭니다.
     /// M2 이동·조작 확인, M3 먹이·성장·카메라 줌 확인, M4 허기·사망·결과·첫 화면 복귀 확인, M5 첫 화면 선택·저장 확인,
-    /// M6 전 봇 플레이어 확인, M6 고기 드롭·변이·접촉 처치 확인에 사용합니다.
+    /// M6 전 봇 플레이어 확인, M6 고기 드롭·변이·접촉 처치 확인, M7 HUD 확인에 사용합니다.
     /// WebGL 기본 폰트에 한글 글리프가 없으므로 화면 문구는 영어로 둡니다.
     /// </summary>
     [AddComponentMenu("MutatIO/Prototype/Prototype Bootstrap")]
@@ -56,6 +57,10 @@ namespace MutatIO.Prototype
         private GameObject resultPanel;
         private Text resultText;
         private Text statusText;
+        private GameObject statusRoot;
+        private GameObject settingsPanel;
+        private GameObject dashButtonRoot;
+        private Image dashCooldownImage;
         private InputField nicknameField;
         private Font font;
         private bool isMobile;
@@ -132,6 +137,12 @@ namespace MutatIO.Prototype
                 return;
             }
 
+            UpdateDashCooldown(player);
+            if (!statusRoot.activeSelf)
+            {
+                return;
+            }
+
             var hunger = runner.Simulation.Settings.hunger;
             var state = player.Movement;
             var dash = state.IsDashing ? "dashing"
@@ -163,6 +174,28 @@ namespace MutatIO.Prototype
         {
             commandSource.Mode = mode;
             joystickRoot.SetActive(mode == ControlMode.VirtualPad);
+            // 임시: 대시 버튼은 모바일, 그리고 PC에서는 가상패드 모드일 때만 보입니다. PC 다른 모드는 스페이스·좌클릭을 씁니다.
+            dashButtonRoot.SetActive(isMobile || mode == ControlMode.VirtualPad);
+        }
+
+        /// <summary>임시: 쿨타임 표시 방식은 미결정입니다. 남은 대기시간 비율만큼 버튼을 어둡게 덮습니다.</summary>
+        private void UpdateDashCooldown(Creature player)
+        {
+            var movement = runner.Simulation.Settings.movement;
+            var state = player.Movement;
+            dashCooldownImage.fillAmount = state.IsDashing ? 1f
+                : movement.dashCooldown > 0f ? Mathf.Clamp01(state.DashCooldownRemaining / movement.dashCooldown)
+                : 0f;
+        }
+
+        private void ToggleSettings()
+        {
+            settingsPanel.SetActive(!settingsPanel.activeSelf);
+        }
+
+        private void ToggleDebugInfo()
+        {
+            statusRoot.SetActive(!statusRoot.activeSelf);
         }
 
         private void ApplyState(GameFlowState state)
@@ -180,6 +213,7 @@ namespace MutatIO.Prototype
             }
 
             gameplayRoot.SetActive(state == GameFlowState.Playing);
+            settingsPanel.SetActive(false);
             titlePanel.SetActive(state == GameFlowState.Title);
             resultPanel.SetActive(state == GameFlowState.Result);
             if (state == GameFlowState.Result)
@@ -230,7 +264,7 @@ namespace MutatIO.Prototype
                 return;
             }
 
-            var player = runner.SpawnLocalPlayer();
+            var player = runner.SpawnLocalPlayer(currentProfile.Nickname);
             creatureObject = CreateCreature(player, currentProfile.AppearanceId, "PlayerCreature");
             commandSource.SetCharacter(creatureObject.transform);
             if (cameraController != null)
@@ -329,7 +363,6 @@ namespace MutatIO.Prototype
             // 임시: 외형은 표시 정보이므로 봇마다 무작위로 고릅니다. 온라인 단계에서는 서버가 정한 외형을 받아야 합니다.
             var appearanceId = CharacterAppearances.GetId(Random.Range(0, CharacterAppearances.Count));
             var botObject = CreateCreature(bot.Creature, appearanceId, "Bot " + bot.Name);
-            AddNameLabel(botObject.transform, bot.Name);
             botObjects[bot] = botObject;
         }
 
@@ -341,26 +374,6 @@ namespace MutatIO.Prototype
                 botObjects.Remove(bot);
                 Destroy(botObject);
             }
-        }
-
-        /// <summary>
-        /// 임시: 머리 위 닉네임 HUD(M7) 전까지 봇 이름만 간단한 월드 문자로 표시합니다. 몸집과 함께 커집니다.
-        /// </summary>
-        private void AddNameLabel(Transform parent, string text)
-        {
-            var label = new GameObject("NameLabel").AddComponent<TextMesh>();
-            label.transform.SetParent(parent, false);
-            label.transform.localPosition = new Vector3(0f, 0.95f, 0f);
-            label.font = font;
-            label.text = text;
-            label.fontSize = 48;
-            label.characterSize = 0.06f;
-            label.anchor = TextAnchor.LowerCenter;
-            label.alignment = TextAlignment.Center;
-            label.color = new Color(1f, 1f, 1f, 0.85f);
-            var renderer = label.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = font.material;
-            renderer.sortingOrder = 3;
         }
 
         private void CreateMap()
@@ -422,6 +435,7 @@ namespace MutatIO.Prototype
 
             AddCreaturePart(creatureObject.transform, "Face", PrototypeSprites.GetFace(appearanceId), Color.white, 2);
             AddMutationGauge(view);
+            AddHeadDisplay(view, ears != null ? PrototypeSprites.EarSpriteScale : 1f);
             view.Bind(creature);
             creatureViews[creature] = view;
             return creatureObject;
@@ -450,6 +464,41 @@ namespace MutatIO.Prototype
             fill.sortingOrder = 4;
 
             view.SetMutationGauge(root, fill.transform, runner.Simulation.Settings.mutation);
+        }
+
+        /// <summary>머리 위 닉네임과 포만 게이지입니다. 크기는 <see cref="CreatureHeadView"/>가 화면 기준으로 맞춥니다.</summary>
+        private void AddHeadDisplay(CreatureView view, float topRadiusMultiplier)
+        {
+            var head = new GameObject("Head").AddComponent<CreatureHeadView>();
+            head.transform.SetParent(view.transform, false);
+
+            var background = new GameObject("SatietyBackground").AddComponent<SpriteRenderer>();
+            background.transform.SetParent(head.transform, false);
+            background.transform.localScale = new Vector3(2f, 0.22f, 1f);
+            background.sprite = PrototypeSprites.Square;
+            background.color = new Color(0f, 0f, 0f, 0.55f);
+            background.sortingOrder = 5;
+
+            var fill = new GameObject("SatietyFill").AddComponent<SpriteRenderer>();
+            fill.transform.SetParent(head.transform, false);
+            fill.transform.localScale = new Vector3(2f, 0.22f, 1f);
+            fill.sprite = PrototypeSprites.Square;
+            fill.sortingOrder = 6;
+
+            var label = new GameObject("Name").AddComponent<TextMesh>();
+            label.transform.SetParent(head.transform, false);
+            label.transform.localPosition = new Vector3(0f, 0.25f, 0f);
+            label.font = font;
+            label.fontSize = 48;
+            label.characterSize = 0.1f;
+            label.anchor = TextAnchor.LowerCenter;
+            label.alignment = TextAlignment.Center;
+            label.color = new Color(1f, 1f, 1f, 0.9f);
+            var renderer = label.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = font.material;
+            renderer.sortingOrder = 6;
+
+            head.Bind(view, worldCamera, runner.Simulation.Settings.hunger, label, fill, topRadiusMultiplier);
         }
 
         private static SpriteRenderer AddCreaturePart(Transform parent, string name, Sprite sprite, Color color, int sortingOrder)
@@ -503,27 +552,60 @@ namespace MutatIO.Prototype
             return joystick;
         }
 
+        /// <summary>임시: 대시 버튼 위치는 미결정이며 우하단에 둡니다. 쿨타임 동안 어두운 원형 채움으로 덮습니다.</summary>
         private DashButton CreateDashButton(RectTransform canvas)
         {
             var area = CreateRect("DashButton", canvas, new Vector2(1f, 0f), new Vector2(-200f, 200f), new Vector2(180f, 180f));
             AddCircleImage(area, new Color(1f, 0.6f, 0.3f, 0.35f), true);
+            var cooldown = CreateRect("Cooldown", area, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(180f, 180f));
+            dashCooldownImage = cooldown.gameObject.AddComponent<Image>();
+            dashCooldownImage.sprite = PrototypeSprites.Circle;
+            dashCooldownImage.color = new Color(0f, 0f, 0f, 0.5f);
+            dashCooldownImage.type = Image.Type.Filled;
+            dashCooldownImage.fillMethod = Image.FillMethod.Radial360;
+            dashCooldownImage.fillOrigin = (int)Image.Origin360.Top;
+            dashCooldownImage.fillAmount = 0f;
+            dashCooldownImage.raycastTarget = false;
             CreateLabel(area, "DASH", 32);
+            dashButtonRoot = area.gameObject;
             return area.gameObject.AddComponent<DashButton>();
         }
 
+        /// <summary>
+        /// HUD 배치: 좌측 상단 랭킹, 우측 상단 설정 버튼. 디버그 정보는 랭킹 아래에 설정에서 켤 때만 보입니다.
+        /// 임시: 설정 항목은 미결정이며 지금은 개발용 버튼과 디버그 정보 토글만 둡니다. 설정을 열어도 월드와 이동은 멈추지 않습니다.
+        /// </summary>
         private void CreateControls(RectTransform gameplay)
         {
-            var status = CreateRect("Status", gameplay, new Vector2(0f, 1f), new Vector2(310f, -260f), new Vector2(580f, 500f));
-            statusText = CreateLabel(status, string.Empty, 28);
-            statusText.alignment = TextAnchor.UpperLeft;
+            var ranking = CreateRect("Ranking", gameplay, new Vector2(0f, 1f), new Vector2(210f, -200f), new Vector2(380f, 360f));
+            var rankingText = CreateLabel(ranking, string.Empty, 26);
+            rankingText.alignment = TextAnchor.UpperLeft;
+            ranking.gameObject.AddComponent<RankingView>().Bind(runner.Simulation, () => runner.LocalPlayer, rankingText);
 
-            CreateButton(gameplay, "Feed +20", new Vector2(1f, 1f), new Vector2(-430f, -50f), () => Feed(20));
-            CreateButton(gameplay, "Feed +200", new Vector2(1f, 1f), new Vector2(-260f, -50f), () => Feed(200));
-            CreateButton(gameplay, "Starve", new Vector2(1f, 1f), new Vector2(-90f, -50f), Starve);
-            CreateButton(gameplay, "Role", new Vector2(1f, 1f), new Vector2(-430f, -130f), ToggleRole);
-            CreateButton(gameplay, "Bot Lv -", new Vector2(1f, 1f), new Vector2(-260f, -130f), () => ChangeBotSkill(-BotSkillStep));
-            CreateButton(gameplay, "Bot Lv +", new Vector2(1f, 1f), new Vector2(-90f, -130f), () => ChangeBotSkill(BotSkillStep));
-            CreateButton(gameplay, "Meat x5", new Vector2(1f, 1f), new Vector2(-430f, -210f), DropMeatNearPlayer);
+            var status = CreateRect("DebugInfo", gameplay, new Vector2(0f, 1f), new Vector2(310f, -640f), new Vector2(580f, 480f));
+            statusText = CreateLabel(status, string.Empty, 22);
+            statusText.alignment = TextAnchor.UpperLeft;
+            statusRoot = status.gameObject;
+            statusRoot.SetActive(false);
+
+            CreateButton(gameplay, "Settings", new Vector2(1f, 1f), new Vector2(-110f, -50f), ToggleSettings, new Vector2(180f, 64f));
+
+            var panel = CreateRect("SettingsPanel", gameplay, new Vector2(1f, 1f), new Vector2(-280f, -330f), new Vector2(520f, 440f));
+            panel.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.75f);
+            var center = new Vector2(0.5f, 0.5f);
+            var caption = CreateRect("Caption", panel, center, new Vector2(0f, 180f), new Vector2(480f, 50f));
+            CreateLabel(caption, "Settings (dev)", 28);
+            CreateButton(panel, "Feed +20", center, new Vector2(-170f, 100f), () => Feed(20));
+            CreateButton(panel, "Feed +200", center, new Vector2(0f, 100f), () => Feed(200));
+            CreateButton(panel, "Starve", center, new Vector2(170f, 100f), Starve);
+            CreateButton(panel, "Role", center, new Vector2(-170f, 20f), ToggleRole);
+            CreateButton(panel, "Meat x5", center, new Vector2(0f, 20f), DropMeatNearPlayer);
+            CreateButton(panel, "Debug", center, new Vector2(170f, 20f), ToggleDebugInfo);
+            CreateButton(panel, "Bot Lv -", center, new Vector2(-170f, -60f), () => ChangeBotSkill(-BotSkillStep));
+            CreateButton(panel, "Bot Lv +", center, new Vector2(0f, -60f), () => ChangeBotSkill(BotSkillStep));
+            CreateButton(panel, "Close", center, new Vector2(0f, -160f), ToggleSettings);
+            settingsPanel = panel.gameObject;
+            settingsPanel.SetActive(false);
         }
 
         /// <summary>

@@ -38,12 +38,12 @@ namespace MutatIO.World
         }
 
         /// <summary>작은 초식 생명체로 새로 입장합니다. 이미 살아 있는 내 생명체가 있으면 그대로 반환합니다.</summary>
-        public Creature SpawnLocalPlayer()
+        public Creature SpawnLocalPlayer(string nickname = null)
         {
             if (LocalPlayer == null)
             {
                 // 임시: 스폰 위치·안전 거리(SPAWN-01)는 미결정입니다. 현재는 맵 중앙에 입장합니다.
-                LocalPlayer = Simulation.SpawnCreature(System.Numerics.Vector2.Zero);
+                LocalPlayer = Simulation.SpawnCreature(System.Numerics.Vector2.Zero, nickname);
             }
 
             return LocalPlayer;
