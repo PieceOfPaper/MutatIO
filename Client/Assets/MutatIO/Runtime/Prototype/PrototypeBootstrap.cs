@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using MutatIO.Cameras;
 using MutatIO.Creatures;
 using MutatIO.Feeding;
 using MutatIO.Flow;
 using MutatIO.Input;
+using MutatIO.Profile;
 using MutatIO.Shared.Creatures;
 using MutatIO.World;
 using UnityEngine;
@@ -14,8 +16,7 @@ namespace MutatIO.Prototype
 {
     /// <summary>
     /// 로컬 프로토타입 씬을 런타임에 구성합니다. Shared 월드 시뮬레이션을 실행하고 맵·먹이·내 생명체·조작 UI를 만듭니다.
-    /// M2 이동·조작 확인, M3 먹이·성장·카메라 줌 확인, M4 허기·사망·결과·첫 화면 복귀 확인에 사용합니다.
-    /// 임시: 첫 화면은 입장 버튼만 있는 자리표시이며 외형·닉네임·조작 선택은 M5에서 만듭니다.
+    /// M2 이동·조작 확인, M3 먹이·성장·카메라 줌 확인, M4 허기·사망·결과·첫 화면 복귀 확인, M5 첫 화면 선택·저장 확인에 사용합니다.
     /// WebGL 기본 폰트에 한글 글리프가 없으므로 화면 문구는 영어로 둡니다.
     /// </summary>
     [AddComponentMenu("MutatIO/Prototype/Prototype Bootstrap")]
@@ -23,9 +24,14 @@ namespace MutatIO.Prototype
     {
         private const float MapBorderThickness = 0.3f;
 
-        [SerializeField] private ControlMode initialMode = ControlMode.PointerFollow;
+        private static readonly Color HerbivoreColor = new Color(0.55f, 0.85f, 1f);
+        private static readonly Color OptionColor = new Color(1f, 1f, 1f, 0.12f);
+        private static readonly Color SelectedOptionColor = new Color(0.4f, 0.8f, 0.5f, 0.6f);
 
         private readonly GameFlow flow = new GameFlow();
+        private readonly PlayerProfileStore profileStore = new PlayerProfileStore();
+        private readonly Dictionary<string, Image> appearanceOptions = new Dictionary<string, Image>();
+        private readonly Dictionary<ControlMode, Image> modeOptions = new Dictionary<ControlMode, Image>();
 
         private Camera worldCamera;
         private WorldCameraController cameraController;
@@ -38,11 +44,17 @@ namespace MutatIO.Prototype
         private GameObject resultPanel;
         private Text resultText;
         private Text statusText;
+        private InputField nicknameField;
         private Font font;
+        private bool isMobile;
+        private string selectedAppearance = CharacterAppearances.Default;
+        private ControlMode selectedMode;
+        private PlayerProfile currentProfile;
 
         private void Awake()
         {
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            isMobile = Application.isMobilePlatform;
             worldCamera = Camera.main;
             if (worldCamera != null)
             {
@@ -62,14 +74,13 @@ namespace MutatIO.Prototype
             var gameplay = (RectTransform)gameplayRoot.transform;
             var joystick = CreateJoystick(gameplay);
             var dashButton = CreateDashButton(gameplay);
-            CreateControls(canvas, gameplay);
+            CreateControls(gameplay);
             CreateTitlePanel(canvas);
             CreateResultPanel(canvas);
 
             commandSource = gameObject.AddComponent<PlayerCommandSource>();
             commandSource.Bind(worldCamera, null, joystick, dashButton);
             runner.SetCommandSource(commandSource);
-            SetMode(initialMode);
 
             if (worldCamera != null)
             {
@@ -107,6 +118,7 @@ namespace MutatIO.Prototype
                 : state.DashCooldownRemaining > 0f ? $"{state.DashCooldownRemaining:0.0}s"
                 : "ready";
             statusText.text =
+                $"Name: {currentProfile.Nickname}  Look: {currentProfile.AppearanceId}\n" +
                 $"Mode: {commandSource.Mode}\n" +
                 $"Score: {player.Intake:0}  Size: {player.Size:0.00}\n" +
                 $"Satiety: {player.Satiety:0.0} / {hunger.maxSatiety:0}\n" +
@@ -122,6 +134,18 @@ namespace MutatIO.Prototype
 
         private void ApplyState(GameFlowState state)
         {
+            // 숨겨지는 버튼이 선택된 채로 남아 이후 키 입력을 받지 않게 합니다.
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
+
+            if (state == GameFlowState.Title)
+            {
+                // 첫 화면에 올 때마다 저장된 이전 선택을 복원합니다.
+                ShowProfile(profileStore.Load(isMobile));
+            }
+
             gameplayRoot.SetActive(state == GameFlowState.Playing);
             titlePanel.SetActive(state == GameFlowState.Title);
             resultPanel.SetActive(state == GameFlowState.Result);
@@ -131,15 +155,50 @@ namespace MutatIO.Prototype
             }
         }
 
+        private void ShowProfile(PlayerProfile profile)
+        {
+            SelectAppearance(profile.AppearanceId);
+            SelectMode(profile.ControlMode);
+            nicknameField.SetTextWithoutNotify(profile.Nickname);
+        }
+
+        private void SelectAppearance(string appearanceId)
+        {
+            selectedAppearance = appearanceId;
+            foreach (var option in appearanceOptions)
+            {
+                option.Value.color = option.Key == appearanceId ? SelectedOptionColor : OptionColor;
+            }
+        }
+
+        private void SelectMode(ControlMode mode)
+        {
+            selectedMode = mode;
+            foreach (var option in modeOptions)
+            {
+                option.Value.color = option.Key == mode ? SelectedOptionColor : OptionColor;
+            }
+        }
+
         private void EnterWorld()
         {
+            if (flow.State != GameFlowState.Title)
+            {
+                return;
+            }
+
+            // 입장 확정 시에만 저장합니다.
+            currentProfile = new PlayerProfile(selectedAppearance, PlayerProfile.NormalizeNickname(nicknameField.text), selectedMode);
+            profileStore.Save(currentProfile);
+            SetMode(currentProfile.ControlMode);
+
             if (!flow.Enter())
             {
                 return;
             }
 
             var player = runner.SpawnLocalPlayer();
-            creatureObject = CreateCreature(player);
+            creatureObject = CreateCreature(player, currentProfile.AppearanceId);
             commandSource.SetCharacter(creatureObject.transform);
             if (cameraController != null)
             {
@@ -211,12 +270,13 @@ namespace MutatIO.Prototype
             border.sortingOrder = -5;
         }
 
-        private static GameObject CreateCreature(Creature creature)
+        private static GameObject CreateCreature(Creature creature, string appearanceId)
         {
             var creatureObject = new GameObject("PlayerCreature");
             var renderer = creatureObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = PrototypeSprites.Circle;
-            renderer.color = new Color(0.55f, 0.85f, 1f);
+            renderer.sprite = PrototypeSprites.Appearance(appearanceId);
+            // 색은 역할(초식·육식) 표현입니다. 외형은 색이 아니라 무늬로 구분합니다.
+            renderer.color = HerbivoreColor;
             creatureObject.AddComponent<CreatureView>().Bind(creature);
             return creatureObject;
         }
@@ -270,37 +330,89 @@ namespace MutatIO.Prototype
             return area.gameObject.AddComponent<DashButton>();
         }
 
-        private void CreateControls(RectTransform canvas, RectTransform gameplay)
+        private void CreateControls(RectTransform gameplay)
         {
-            var status = CreateRect("Status", gameplay, new Vector2(0f, 1f), new Vector2(240f, -115f), new Vector2(440f, 210f));
+            var status = CreateRect("Status", gameplay, new Vector2(0f, 1f), new Vector2(260f, -135f), new Vector2(480f, 250f));
             statusText = CreateLabel(status, string.Empty, 28);
             statusText.alignment = TextAnchor.UpperLeft;
 
+            CreateButton(gameplay, "Feed +20", new Vector2(1f, 1f), new Vector2(-430f, -50f), () => Feed(20f));
+            CreateButton(gameplay, "Feed +200", new Vector2(1f, 1f), new Vector2(-260f, -50f), () => Feed(200f));
+            CreateButton(gameplay, "Starve", new Vector2(1f, 1f), new Vector2(-90f, -50f), Starve);
+        }
+
+        /// <summary>
+        /// 외형·닉네임·조작 선택과 입장 버튼을 한 화면에 둡니다.
+        /// 임시: 기기에서 쓸 수 없는 조작의 표시 방식은 미결정이므로 네 선택지를 모두 같은 방식으로 보여 줍니다.
+        /// 네 번째 선택지는 PC에서 'Mouse', 모바일에서 'Touch'로 표시합니다(최종 문구 미결정).
+        /// </summary>
+        private void CreateTitlePanel(RectTransform canvas)
+        {
+            var center = new Vector2(0.5f, 0.5f);
+            var panel = CreatePanel("TitlePanel", canvas, new Vector2(900f, 720f));
+            var title = CreateRect("Title", panel, center, new Vector2(0f, 285f), new Vector2(560f, 100f));
+            CreateLabel(title, "MutatIO", 72);
+
+            CreateCaption(panel, "Character", 195f);
+            for (var i = 0; i < CharacterAppearances.Count; i++)
+            {
+                var id = CharacterAppearances.GetId(i);
+                var background = CreateButton(panel, string.Empty, center, new Vector2(-225f + i * 150f, 115f), () => SelectAppearance(id), new Vector2(120f, 120f));
+                var preview = CreateRect("Preview", (RectTransform)background.transform, center, Vector2.zero, new Vector2(90f, 90f));
+                var image = preview.gameObject.AddComponent<Image>();
+                image.sprite = PrototypeSprites.Appearance(id);
+                image.color = HerbivoreColor;
+                image.raycastTarget = false;
+                appearanceOptions[id] = background;
+            }
+
+            CreateCaption(panel, "Nickname", 20f);
+            nicknameField = CreateInputField(panel, new Vector2(0f, -40f), new Vector2(480f, 64f), "Nickname");
+            nicknameField.characterLimit = PlayerProfile.MaxNicknameLength;
+
+            CreateCaption(panel, "Control", -120f);
             var modes = new[] { ControlMode.Wasd, ControlMode.ArrowKeys, ControlMode.VirtualPad, ControlMode.PointerFollow };
-            var labels = new[] { "WASD", "Arrows", "Pad", "Pointer" };
+            var labels = new[] { "WASD", "Arrows", "Pad", isMobile ? "Touch" : "Mouse" };
             for (var i = 0; i < modes.Length; i++)
             {
                 var mode = modes[i];
-                CreateButton(canvas, labels[i], new Vector2(1f, 1f), new Vector2(-90f - (modes.Length - 1 - i) * 170f, -50f), () => SetMode(mode));
+                modeOptions[mode] = CreateButton(panel, labels[i], center, new Vector2(-285f + i * 190f, -180f), () => SelectMode(mode), new Vector2(170f, 64f));
             }
 
-            CreateButton(gameplay, "Feed +20", new Vector2(1f, 1f), new Vector2(-430f, -130f), () => Feed(20f));
-            CreateButton(gameplay, "Feed +200", new Vector2(1f, 1f), new Vector2(-260f, -130f), () => Feed(200f));
-            CreateButton(gameplay, "Starve", new Vector2(1f, 1f), new Vector2(-90f, -130f), Starve);
+            CreateButton(panel, "PLAY", center, new Vector2(0f, -290f), EnterWorld, new Vector2(220f, 76f));
+            titlePanel = panel.gameObject;
         }
 
-        private void CreateTitlePanel(RectTransform canvas)
+        private void CreateCaption(RectTransform parent, string text, float y)
         {
-            var panel = CreatePanel("TitlePanel", canvas);
-            var title = CreateRect("Title", panel, new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(560f, 120f));
-            CreateLabel(title, "MutatIO", 72);
-            CreateButton(panel, "PLAY", new Vector2(0.5f, 0.5f), new Vector2(0f, -70f), EnterWorld);
-            titlePanel = panel.gameObject;
+            var rect = CreateRect(text + "Caption", parent, new Vector2(0.5f, 0.5f), new Vector2(0f, y), new Vector2(600f, 40f));
+            var label = CreateLabel(rect, text, 26);
+            label.color = new Color(1f, 1f, 1f, 0.6f);
+        }
+
+        private InputField CreateInputField(RectTransform parent, Vector2 position, Vector2 size, string placeholderText)
+        {
+            var rect = CreateRect("NicknameField", parent, new Vector2(0.5f, 0.5f), position, size);
+            var background = rect.gameObject.AddComponent<Image>();
+            background.color = OptionColor;
+
+            var text = CreateLabel(rect, string.Empty, 30);
+            text.supportRichText = false;
+            var placeholder = CreateLabel(rect, placeholderText, 30);
+            placeholder.color = new Color(1f, 1f, 1f, 0.35f);
+            placeholder.fontStyle = FontStyle.Italic;
+
+            var field = rect.gameObject.AddComponent<InputField>();
+            field.targetGraphic = background;
+            field.textComponent = text;
+            field.placeholder = placeholder;
+            field.lineType = InputField.LineType.SingleLine;
+            return field;
         }
 
         private void CreateResultPanel(RectTransform canvas)
         {
-            var panel = CreatePanel("ResultPanel", canvas);
+            var panel = CreatePanel("ResultPanel", canvas, new Vector2(640f, 420f));
             var text = CreateRect("ResultText", panel, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(560f, 200f));
             resultText = CreateLabel(text, string.Empty, 44);
             CreateButton(panel, "OK", new Vector2(0.5f, 0.5f), new Vector2(0f, -110f), () => flow.ConfirmResult());
@@ -308,22 +420,23 @@ namespace MutatIO.Prototype
         }
 
         /// <summary>화면 중앙의 불투명 패널입니다. 패널 영역 클릭이 월드 대시로 쓰이지 않도록 레이캐스트를 받습니다.</summary>
-        private static RectTransform CreatePanel(string name, RectTransform canvas)
+        private static RectTransform CreatePanel(string name, RectTransform canvas, Vector2 size)
         {
-            var panel = CreateRect(name, canvas, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(640f, 420f));
+            var panel = CreateRect(name, canvas, new Vector2(0.5f, 0.5f), Vector2.zero, size);
             var image = panel.gameObject.AddComponent<Image>();
             image.color = new Color(0f, 0f, 0f, 0.75f);
             return panel;
         }
 
-        private void CreateButton(RectTransform parent, string label, Vector2 anchor, Vector2 position, UnityEngine.Events.UnityAction onClick)
+        private Image CreateButton(RectTransform parent, string label, Vector2 anchor, Vector2 position, UnityEngine.Events.UnityAction onClick, Vector2? size = null)
         {
-            var rect = CreateRect(label, parent, anchor, position, new Vector2(160f, 64f));
+            var rect = CreateRect(string.IsNullOrEmpty(label) ? "Button" : label, parent, anchor, position, size ?? new Vector2(160f, 64f));
             var image = rect.gameObject.AddComponent<Image>();
             image.color = new Color(1f, 1f, 1f, 0.2f);
             var button = rect.gameObject.AddComponent<Button>();
             button.onClick.AddListener(onClick);
             CreateLabel(rect, label, 26);
+            return image;
         }
 
         private Text CreateLabel(RectTransform parent, string text, int fontSize)

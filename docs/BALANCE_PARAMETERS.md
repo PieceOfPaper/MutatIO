@@ -130,6 +130,7 @@ M3 구현은 2026-10-17 타일 리젠·흡수 규칙 확정 이전의 임시안�
 | CAMERA-01 | `CameraZoomSettings.baseHalfHeight`, `sizeExponent` (`Client/.../Runtime/Cameras`) — 직교 크기 = 기본값 × 몸집^지수 | 8, 0.6 |
 | CAMERA-02 | `CameraZoomSettings.minHalfHeight`, `maxHalfHeight` | 8, 30 |
 | CAMERA-03 | `CameraZoomSettings.zoomSmoothTime` | 0.4초 |
+| UI-01 | `PlayerProfile.MaxNicknameLength` (`Client/.../Runtime/Profile`) — 앞뒤 공백 제거 후 텍스트 요소(문자) 수 기준 | 12자 |
 
 ## 6. 테스트 기록 양식
 

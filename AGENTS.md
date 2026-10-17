@@ -71,6 +71,7 @@ Client/Assets/MutatIO/
     Creatures/      생명체 표시(CreatureView) — 구현됨
     Feeding/        먹이 표시(FoodFieldView) — 구현됨
     Flow/           첫 화면·플레이·결과 상태 전환(GameFlow) — 구현됨
+    Profile/        외형·닉네임·조작 선택과 PlayerPrefs 저장·복원 — 구현됨
     Hunger/
     Growth/
     Combat/
