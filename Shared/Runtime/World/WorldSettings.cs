@@ -1,8 +1,10 @@
 using System;
+using MutatIO.Shared.Combat;
 using MutatIO.Shared.Feeding;
 using MutatIO.Shared.Growth;
 using MutatIO.Shared.Hunger;
 using MutatIO.Shared.Movement;
+using MutatIO.Shared.Mutation;
 
 namespace MutatIO.Shared.World
 {
@@ -23,5 +25,7 @@ namespace MutatIO.Shared.World
         public GrowthSettings growth = new GrowthSettings();
         public FoodSettings food = new FoodSettings();
         public HungerSettings hunger = new HungerSettings();
+        public MutationSettings mutation = new MutationSettings();
+        public ContactSettings contact = new ContactSettings();
     }
 }

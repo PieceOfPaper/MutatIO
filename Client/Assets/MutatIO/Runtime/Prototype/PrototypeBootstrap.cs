@@ -7,6 +7,8 @@ using MutatIO.Input;
 using MutatIO.Profile;
 using MutatIO.Shared.Bots;
 using MutatIO.Shared.Creatures;
+using MutatIO.Shared.Feeding;
+using MutatIO.Shared.Mutation;
 using MutatIO.World;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -18,7 +20,7 @@ namespace MutatIO.Prototype
     /// <summary>
     /// 로컬 프로토타입 씬을 런타임에 구성합니다. Shared 월드 시뮬레이션을 실행하고 맵·먹이·내 생명체·조작 UI를 만듭니다.
     /// M2 이동·조작 확인, M3 먹이·성장·카메라 줌 확인, M4 허기·사망·결과·첫 화면 복귀 확인, M5 첫 화면 선택·저장 확인,
-    /// M6 전 봇 플레이어 확인에 사용합니다.
+    /// M6 전 봇 플레이어 확인, M6 고기 드롭·변이·접촉 처치 확인에 사용합니다.
     /// WebGL 기본 폰트에 한글 글리프가 없으므로 화면 문구는 영어로 둡니다.
     /// </summary>
     [AddComponentMenu("MutatIO/Prototype/Prototype Bootstrap")]
@@ -40,6 +42,7 @@ namespace MutatIO.Prototype
         private readonly Dictionary<string, Image> appearanceOptions = new Dictionary<string, Image>();
         private readonly Dictionary<ControlMode, Image> modeOptions = new Dictionary<ControlMode, Image>();
         private readonly Dictionary<Bot, GameObject> botObjects = new Dictionary<Bot, GameObject>();
+        private readonly Dictionary<Creature, CreatureView> creatureViews = new Dictionary<Creature, CreatureView>();
         private readonly System.Text.StringBuilder statusBuilder = new System.Text.StringBuilder();
 
         private Camera worldCamera;
@@ -78,6 +81,7 @@ namespace MutatIO.Prototype
             runner.LocalPlayerDied += OnLocalPlayerDied;
             runner.Bots.BotJoined += OnBotJoined;
             runner.Bots.BotLeft += OnBotLeft;
+            runner.Simulation.FoodConsumed += OnFoodConsumed;
 
             EnsureEventSystem();
             var canvas = CreateCanvas();
@@ -116,6 +120,7 @@ namespace MutatIO.Prototype
                 runner.LocalPlayerDied -= OnLocalPlayerDied;
                 runner.Bots.BotJoined -= OnBotJoined;
                 runner.Bots.BotLeft -= OnBotLeft;
+                runner.Simulation.FoodConsumed -= OnFoodConsumed;
             }
         }
 
@@ -133,19 +138,22 @@ namespace MutatIO.Prototype
                 : state.DashCooldownRemaining > 0f ? $"{state.DashCooldownRemaining:0.0}s"
                 : "ready";
             var bots = runner.Bots;
+            var threshold = MutationSystem.GetThreshold(player.Size, runner.Simulation.Settings.mutation);
             statusBuilder.Clear();
             statusBuilder
                 .Append($"Name: {currentProfile.Nickname}  Look: {currentProfile.AppearanceId}\n")
                 .Append($"Mode: {commandSource.Mode}  Role: {player.Role}\n")
                 .Append($"Score: {player.Intake}  Size: {player.Size:0.00}\n")
                 .Append($"Satiety: {player.Satiety:0.0} / {hunger.maxSatiety:0}\n")
+                .Append(player.Role == CreatureRole.Herbivore ? $"Mutation: {player.Mutation:0.0} / {threshold:0.0}\n" : "Mutation: carnivore\n")
                 .Append($"Speed: {state.Velocity.Length():0.00}  Dash: {dash}\n")
                 .Append($"Plants: {runner.Simulation.Food.PlantCount}  Pos: {state.Position.X:0}, {state.Position.Y:0}\n")
                 .Append($"Bots: {bots.Bots.Count} (+{bots.PendingJoinCount} joining)  Level: {bots.SkillLevel:0.0}\n");
             foreach (var bot in bots.Bots)
             {
                 var creature = bot.Creature;
-                statusBuilder.Append($"  {bot.Name}: {bot.Intent}  Score {creature.Intake}  Satiety {creature.Satiety:0}\n");
+                var role = creature.Role == CreatureRole.Carnivore ? "C" : "H";
+                statusBuilder.Append($"  {bot.Name} [{role}]: {bot.Intent}  Score {creature.Intake}  Satiety {creature.Satiety:0}\n");
             }
 
             statusText.text = statusBuilder.ToString();
@@ -176,7 +184,7 @@ namespace MutatIO.Prototype
             resultPanel.SetActive(state == GameFlowState.Result);
             if (state == GameFlowState.Result)
             {
-                resultText.text = $"GAME OVER\n\nScore: {flow.LastResult.Score}";
+                resultText.text = $"GAME OVER\n{flow.LastResult.DeathReason}\nScore: {flow.LastResult.Score}";
             }
         }
 
@@ -240,13 +248,42 @@ namespace MutatIO.Prototype
             }
 
             commandSource.SetCharacter(null);
+            creatureViews.Remove(death.Creature);
             if (creatureObject != null)
             {
                 Destroy(creatureObject);
                 creatureObject = null;
             }
 
-            flow.EndPlay(new PlayResult(death.Creature.Intake));
+            flow.EndPlay(new PlayResult(death.Creature.Intake, DescribeDeath(death)));
+        }
+
+        /// <summary>임시: 결과 항목은 미결정이며 플레이 확인을 위해 사망 원인만 표시합니다.</summary>
+        private string DescribeDeath(CreatureDeath death)
+        {
+            if (death.Cause != DeathCause.Killed)
+            {
+                return "Starved";
+            }
+
+            foreach (var bot in runner.Bots.Bots)
+            {
+                if (bot.Creature == death.Killer)
+                {
+                    return $"Eaten by {bot.Name}";
+                }
+            }
+
+            return "Eaten by a carnivore";
+        }
+
+        private void OnFoodConsumed(FoodItem food, Creature eater)
+        {
+            // 초식이 고기를 먹을 때마다 이상 신호를 보여 줍니다. 변이로 육식이 되면 역할색이 바뀝니다.
+            if (food.Kind == FoodKind.Meat && eater.Role == CreatureRole.Herbivore && creatureViews.TryGetValue(eater, out var view))
+            {
+                view.PlayMutationFeedback();
+            }
         }
 
         private void Feed(int intake)
@@ -263,9 +300,22 @@ namespace MutatIO.Prototype
 
         private void ToggleRole()
         {
-            // 개발용: 변이(M6) 전에 내 역할을 바꿔 봇의 도주(초식 봇)와 추격(육식 봇 상대) 판단을 확인합니다.
+            // 개발용: 변이를 기다리지 않고 내 역할을 바꿔 처치·도주·추격을 확인합니다. 정식 규칙에는 육식 → 초식 전환이 없습니다.
             var player = runner.LocalPlayer;
-            player?.SetRole(player.Role == CreatureRole.Herbivore ? CreatureRole.Carnivore : CreatureRole.Herbivore);
+            if (player != null)
+            {
+                runner.Simulation.ChangeRole(player, player.Role == CreatureRole.Herbivore ? CreatureRole.Carnivore : CreatureRole.Herbivore);
+            }
+        }
+
+        private void DropMeatNearPlayer()
+        {
+            // 개발용: 내 주변에 고기 5개를 떨어뜨려 고기 섭취 피드백·변이 게이지·육식 전환을 확인합니다.
+            var player = runner.LocalPlayer;
+            if (player != null)
+            {
+                runner.Simulation.Food.DropMeat(player.Movement.Position, player.Radius, 5);
+            }
         }
 
         private void ChangeBotSkill(float delta)
@@ -285,6 +335,7 @@ namespace MutatIO.Prototype
 
         private void OnBotLeft(Bot bot)
         {
+            creatureViews.Remove(bot.Creature);
             if (botObjects.TryGetValue(bot, out var botObject))
             {
                 botObjects.Remove(bot);
@@ -350,7 +401,7 @@ namespace MutatIO.Prototype
         /// 원형 몸체에 귀(몸 뒤)와 얼굴(몸 위)을 별도 스프라이트로 얹습니다. 장식은 표시 전용이며 충돌 반경은 몸 원 그대로입니다.
         /// 몸과 귀의 색은 역할(초식·육식) 표현이고, 외형은 장식 형태로만 구분합니다.
         /// </summary>
-        private static GameObject CreateCreature(Creature creature, string appearanceId, string objectName)
+        private GameObject CreateCreature(Creature creature, string appearanceId, string objectName)
         {
             var creatureObject = new GameObject(objectName);
             var body = creatureObject.AddComponent<SpriteRenderer>();
@@ -370,8 +421,35 @@ namespace MutatIO.Prototype
             }
 
             AddCreaturePart(creatureObject.transform, "Face", PrototypeSprites.GetFace(appearanceId), Color.white, 2);
+            AddMutationGauge(view);
             view.Bind(creature);
+            creatureViews[creature] = view;
             return creatureObject;
+        }
+
+        /// <summary>
+        /// 임시: 변이 게이지 위치·공개 범위는 미결정입니다. 몸 아래에 몸 지름 길이의 막대로 두고 모든 생명체에 표시합니다.
+        /// </summary>
+        private void AddMutationGauge(CreatureView view)
+        {
+            var root = new GameObject("MutationGauge").transform;
+            root.SetParent(view.transform, false);
+            root.localPosition = new Vector3(0f, -0.72f, 0f);
+            root.localScale = new Vector3(1f, 0.12f, 1f);
+
+            var background = new GameObject("Background").AddComponent<SpriteRenderer>();
+            background.transform.SetParent(root, false);
+            background.sprite = PrototypeSprites.Square;
+            background.color = new Color(0f, 0f, 0f, 0.55f);
+            background.sortingOrder = 3;
+
+            var fill = new GameObject("Fill").AddComponent<SpriteRenderer>();
+            fill.transform.SetParent(root, false);
+            fill.sprite = PrototypeSprites.Square;
+            fill.color = CarnivoreColor;
+            fill.sortingOrder = 4;
+
+            view.SetMutationGauge(root, fill.transform, runner.Simulation.Settings.mutation);
         }
 
         private static SpriteRenderer AddCreaturePart(Transform parent, string name, Sprite sprite, Color color, int sortingOrder)
@@ -445,6 +523,7 @@ namespace MutatIO.Prototype
             CreateButton(gameplay, "Role", new Vector2(1f, 1f), new Vector2(-430f, -130f), ToggleRole);
             CreateButton(gameplay, "Bot Lv -", new Vector2(1f, 1f), new Vector2(-260f, -130f), () => ChangeBotSkill(-BotSkillStep));
             CreateButton(gameplay, "Bot Lv +", new Vector2(1f, 1f), new Vector2(-90f, -130f), () => ChangeBotSkill(BotSkillStep));
+            CreateButton(gameplay, "Meat x5", new Vector2(1f, 1f), new Vector2(-430f, -210f), DropMeatNearPlayer);
         }
 
         /// <summary>

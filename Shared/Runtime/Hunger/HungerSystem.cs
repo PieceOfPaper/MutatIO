@@ -1,4 +1,5 @@
 using System;
+using MutatIO.Shared.Creatures;
 using MutatIO.Shared.Feeding;
 
 namespace MutatIO.Shared.Hunger
@@ -19,12 +20,19 @@ namespace MutatIO.Shared.Hunger
         }
 
         /// <summary>
-        /// 먹이 하나의 포만 회복량 = 먹이 종류별 기본 회복량 × 몸집별 회복 배율입니다. 몸집이 클수록 같은 먹이로 덜 회복합니다.
-        /// 임시: 육식 먹이의 회복량과 초식 상태 효율(FOOD-06)은 M6에서 정하며 현재는 회복하지 않습니다.
+        /// 먹이 하나의 포만 회복량 = 먹이·역할별 기본 회복량 × 몸집별 회복 배율입니다. 몸집이 클수록 같은 먹이로 덜 회복합니다.
+        /// 초식이 고기를 먹으면 고기 기본 회복량에 초식 효율(FOOD-06)을 곱합니다. 육식은 초식 먹이를 먹지 못하므로 0입니다.
         /// </summary>
-        public static float GetSatietyGain(FoodKind kind, float size, HungerSettings settings)
+        public static float GetSatietyGain(FoodKind kind, CreatureRole role, float size, HungerSettings settings)
         {
-            var baseGain = kind == FoodKind.Plant ? settings.plantSatiety : 0f;
+            if (!EcologyRules.CanEat(role, kind))
+            {
+                return 0f;
+            }
+
+            var baseGain = kind == FoodKind.Plant
+                ? settings.plantSatiety
+                : settings.meatSatiety * (role == CreatureRole.Herbivore ? Math.Max(0f, settings.herbivoreMeatEfficiency) : 1f);
             return baseGain * GetSizeMultiplier(size, settings);
         }
 

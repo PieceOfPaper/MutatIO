@@ -7,7 +7,7 @@ namespace MutatIO.Shared.Feeding
         /// <summary>초식 먹이. 초록색, 타일별로 리젠합니다.</summary>
         Plant = 1,
 
-        /// <summary>육식 먹이. 붉은색, 초식 생명체 사망 시에만 생성합니다(M6).</summary>
+        /// <summary>육식 먹이. 붉은색, 초식 생명체 사망 시에만 생성합니다. 타일 리젠·상한과 무관합니다.</summary>
         Meat = 2,
     }
 

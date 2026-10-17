@@ -353,8 +353,8 @@ public sealed class WorldSimulationTests
     {
         var hunger = new HungerSettings { maxSatiety = 100f, plantSatiety = 30f };
 
-        Assert.Equal(80f, HungerSystem.Restore(50f, HungerSystem.GetSatietyGain(FoodKind.Plant, 1f, hunger), hunger), 4);
-        Assert.Equal(100f, HungerSystem.Restore(90f, HungerSystem.GetSatietyGain(FoodKind.Plant, 1f, hunger), hunger), 4);
+        Assert.Equal(80f, HungerSystem.Restore(50f, HungerSystem.GetSatietyGain(FoodKind.Plant, CreatureRole.Herbivore, 1f, hunger), hunger), 4);
+        Assert.Equal(100f, HungerSystem.Restore(90f, HungerSystem.GetSatietyGain(FoodKind.Plant, CreatureRole.Herbivore, 1f, hunger), hunger), 4);
     }
 
     [Fact]
@@ -362,9 +362,9 @@ public sealed class WorldSimulationTests
     {
         var hunger = new HungerSettings { plantSatiety = 8f, sizeSatietyExponent = 1f, minSatietyMultiplier = 0.25f };
 
-        Assert.Equal(8f, HungerSystem.GetSatietyGain(FoodKind.Plant, 1f, hunger), 4);
-        Assert.Equal(4f, HungerSystem.GetSatietyGain(FoodKind.Plant, 2f, hunger), 4);
-        Assert.Equal(2f, HungerSystem.GetSatietyGain(FoodKind.Plant, 100f, hunger), 4);
+        Assert.Equal(8f, HungerSystem.GetSatietyGain(FoodKind.Plant, CreatureRole.Herbivore, 1f, hunger), 4);
+        Assert.Equal(4f, HungerSystem.GetSatietyGain(FoodKind.Plant, CreatureRole.Herbivore, 2f, hunger), 4);
+        Assert.Equal(2f, HungerSystem.GetSatietyGain(FoodKind.Plant, CreatureRole.Herbivore, 100f, hunger), 4);
     }
 
     [Fact]

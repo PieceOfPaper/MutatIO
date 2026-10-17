@@ -31,8 +31,11 @@ namespace MutatIO.Shared.Creatures
 
         public float Radius => Size * RadiusPerSize;
 
-        /// <summary>현재 역할입니다. 모두 초식으로 시작합니다.</summary>
+        /// <summary>현재 역할입니다. 모두 초식으로 시작하며 육식에서 초식으로 돌아가지 않습니다.</summary>
         public CreatureRole Role { get; private set; } = CreatureRole.Herbivore;
+
+        /// <summary>초식의 누적 변이 수치입니다. 0보다 클 때만 게이지를 표시합니다. 육식으로 전환하면 0입니다.</summary>
+        public float Mutation { get; private set; }
 
         /// <summary>남은 포만량입니다. 0이 되면 사망합니다.</summary>
         public float Satiety { get; private set; }
@@ -49,10 +52,17 @@ namespace MutatIO.Shared.Creatures
             Size = GrowthSystem.GetSize(Intake, growth);
         }
 
-        /// <summary>역할을 바꿉니다. 변이 판정(M6)과 개발용 확인에서 사용합니다.</summary>
+        /// <summary>
+        /// 역할만 바꿉니다. 진행 중인 흡수 취소가 필요하므로 월드 안의 생명체는 <see cref="World.WorldSimulation.ChangeRole"/>을 사용합니다.
+        /// </summary>
         public void SetRole(CreatureRole role)
         {
             Role = role;
+        }
+
+        public void SetMutation(float mutation)
+        {
+            Mutation = System.Math.Max(0f, mutation);
         }
 
         public void SetSatiety(float satiety)

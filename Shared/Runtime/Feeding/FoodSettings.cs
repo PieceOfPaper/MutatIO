@@ -26,5 +26,14 @@ namespace MutatIO.Shared.Feeding
 
         /// <summary>(MAGNET-03) 몸 가장자리에서 이 거리 안에 들어오면 섭취를 완료합니다. 월드 단위.</summary>
         public float consumeDistance = 0f;
+
+        /// <summary>
+        /// (DROP-01) 초식 사망 시 고기 환원율. 고기 개수 = 반올림(이번 생 점수 × 이 값). 육식 사망은 고기를 남기지 않습니다.
+        /// 임시: 개수 변환(반올림)과 분배 방식은 미결정이며 임시안입니다.
+        /// </summary>
+        public float meatDropRatio = 0.5f;
+
+        /// <summary>(DROP-03) 고기가 흩어지는 범위. 죽은 몸 가장자리 바깥으로 이 거리까지. 월드 단위. 부패(유지시간)는 아직 없습니다.</summary>
+        public float meatDropSpread = 1.5f;
     }
 }

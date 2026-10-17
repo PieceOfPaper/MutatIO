@@ -153,7 +153,17 @@ M1~M5 구현은 2026-10-17 M6 착수 전에 확정 기획에 맞춰 정리했습
 | MAGNET-03 | `FoodSettings.consumeDistance` — 몸 가장자리 기준 | 0 |
 | HUNGER-01 | `HungerSettings.maxSatiety`, `startSatiety` (`Shared/Runtime/Hunger`) | 100, 100 |
 | HUNGER-02 | `HungerSettings.decayPerSecond` | 2 게이지/초(가득 찬 상태에서 50초 생존) |
-| FOOD-05 | `HungerSettings.plantSatiety` — 초기 몸집 기준 초식 먹이 1개 회복량, 최대 포만에서 멈춤 | 4(2초 분량). 육식 먹이는 M6 |
+| FOOD-05 | `HungerSettings.plantSatiety`, `meatSatiety` — 초기 몸집 기준 먹이 1개 회복량, 최대 포만에서 멈춤. 육식은 초식 먹이로 회복하지 않음 | 초식 먹이 4(2초 분량), 고기 8 |
+| FOOD-06 | `HungerSettings.herbivoreMeatEfficiency` — 초식이 고기를 먹을 때 고기 회복량에 곱함 | 0.5(초기 몸집에서 4) |
+| MUTATE-01 | `MutationSettings.baseThreshold` (`Shared/Runtime/Mutation`) | 5 |
+| MUTATE-04 | `MutationSettings.sizeThresholdExponent` — 임계치 = 기본값 × 몸집^지수, 이번 먹이로 성장한 뒤 몸집 기준 | 1(몸집 2에서 10) |
+| MUTATE-02 | `MutationSettings.decayPerSecond` — 초식만, 0에서 멈춤 | 0.1/초 |
+| MUTATE-03 | `MutationSettings.gainPerMeat` | 1 |
+| DROP-01 | `FoodSettings.meatDropRatio` — 고기 개수 = 반올림(점수 × 값), 0.5는 올림 | 0.5 |
+| DROP-02 | 고기 1개 = 1점, 회복량은 FOOD-05·06 | — |
+| DROP-03 | `FoodSettings.meatDropSpread` — 몸 반경 + 이 값 안에 균등 무작위. 유지시간(부패) 미구현 | 1.5 |
+| PUSH-01 | `ContactSettings.plantPushMargin` (`Shared/Runtime/Combat`) — 육식 몸 안의 초식 먹이를 가장자리 + 값 위치로 즉시 이동 | 0.05 |
+| PUSH-02 | `ContactSettings.herbivoreSeparationRate` — 스텝마다 겹침 × min(1, 값 × dt)만큼 분리, 큰 쪽이 덜 밀림(면적 비율) | 20/초 |
 | HUNGER-05 | `HungerSettings.sizeSatietyExponent` — 회복 배율 = 몸집^(-지수) | 0.5(몸집 2에서 0.71배) |
 | HUNGER-06 | `HungerSettings.minSatietyMultiplier` | 0.25(몸집 16 이상에서 하한) |
 | GROW-01 | `GrowthSettings.areaPerIntake` — 몸집 = √(1 + 섭취량 × 값) | 0.05 |
@@ -174,6 +184,6 @@ M1~M5 구현은 2026-10-17 M6 착수 전에 확정 기획에 맞춰 정리했습
 
 | 날짜/빌드 | 항목 ID | 임시값/비교값 | 조건 | 관찰 결과 | 채택 여부·이유 |
 | --- | --- | --- | --- | --- | --- |
-| 미실시 | — | — | — | 아직 플레이 테스트하지 않음 | — |
+| 2026-10-17 Editor(자동 진행) | M6 전체 임시값, BOT-03 | 봇 수준 0.6 / 1 | 봇 4명만, 1000×1000 맵, 10분 | 수준 0.6: 굶주림 사망 9, 변이 2, 고기 섭취 209, 처치 0. 수준 1: 초식 굶주림 0, 육식 굶주림 4, 변이 4, 고기 섭취 284, 처치 0, 추격 시간 합계 14초. 변이로 육식은 생기지만 사냥에 실패해 굶어 죽음 | 미채택. 사람 플레이 확인 전. 몸집별 감속(MOVE-02)·대시·인지 거리와 육식 생존 여유를 함께 검토 필요 |
 
 같은 맵·초기 크기·입력 방식으로 기준을 맞추고 한 번에 적은 수의 변수를 바꿉니다. 대시 거리, 정지까지 이동거리, 크기별 추격 성공률, 포식자 발생·생존 시간 등을 비교합니다.

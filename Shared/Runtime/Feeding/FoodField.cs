@@ -38,6 +38,7 @@ namespace MutatIO.Shared.Feeding
         private readonly Random random;
         private readonly List<FoodItem> items = new List<FoodItem>();
         private readonly List<FoodItem> attracted = new List<FoodItem>();
+        private readonly List<FoodItem> pushed = new List<FoodItem>();
         private readonly Dictionary<int, Creature> creaturesById = new Dictionary<int, Creature>();
         private readonly List<FoodItem>[] cells;
         private readonly int[] ownedCounts;
@@ -126,6 +127,89 @@ namespace MutatIO.Shared.Feeding
         public FoodItem Spawn(FoodKind kind, Vector2 position)
         {
             return Add(new FoodItem(nextId++, kind, position, FoodItem.NoTile));
+        }
+
+        /// <summary>
+        /// 죽은 초식 주변(몸 반경 + 범위 안)에 고기를 count개 흩뿌립니다. 맵 밖 위치는 경계 안으로 당깁니다.
+        /// 임시: 원 안 균등 무작위 배치는 미결정 분배 방식의 임시안입니다.
+        /// </summary>
+        public void DropMeat(Vector2 center, float radius, int count)
+        {
+            var spread = Math.Max(0f, radius) + Math.Max(0f, settings.meatDropSpread);
+            for (var i = 0; i < count; i++)
+            {
+                var angle = random.NextDouble() * Math.PI * 2.0;
+                var distance = spread * (float)Math.Sqrt(random.NextDouble());
+                var position = center + new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle)) * distance;
+                Spawn(FoodKind.Meat, ClampToBounds(position));
+            }
+        }
+
+        /// <summary>
+        /// 생명체가 흡수 중인 먹이를 모두 현재 위치에 남기고 선점을 해제합니다. 변이로 역할이 바뀔 때 사용합니다.
+        /// 아직 먹은 것이 아니므로 보상은 없습니다.
+        /// </summary>
+        public void ReleaseAttractedBy(int creatureId)
+        {
+            for (var i = attracted.Count - 1; i >= 0; i--)
+            {
+                var food = attracted[i];
+                if (food.AttractorId == creatureId)
+                {
+                    food.AttractorId = FoodItem.NoAttractor;
+                    RemoveAttractedAt(i);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 육식의 몸에 닿은 초식 먹이를 몸 가장자리 밖으로 밀어냅니다. 먹이를 없애거나 보상으로 바꾸지 않으며 귀속 타일은 그대로입니다.
+        /// 임시: 밀림 반응(PUSH-01)은 몸 가장자리 + 여유 거리로 즉시 옮기는 방식입니다. 여러 육식이 동시에 밀면 생명체 목록 순서대로 처리하고,
+        /// 맵 밖으로 밀린 먹이는 경계 안으로 당깁니다.
+        /// </summary>
+        public void PushPlants(IReadOnlyList<Creature> creatures, float margin)
+        {
+            foreach (var creature in creatures)
+            {
+                if (creature.Role != CreatureRole.Carnivore)
+                {
+                    continue;
+                }
+
+                var center = creature.Movement.Position;
+                var radius = creature.Radius;
+                var extent = new Vector2(radius, radius);
+                GetCellRange(center - extent, center + extent, out var minColumn, out var minRow, out var maxColumn, out var maxRow);
+                pushed.Clear();
+                for (var row = minRow; row <= maxRow; row++)
+                {
+                    for (var column = minColumn; column <= maxColumn; column++)
+                    {
+                        var cell = cells[row * Columns + column];
+                        if (cell == null)
+                        {
+                            continue;
+                        }
+
+                        foreach (var food in cell)
+                        {
+                            if (food.Kind == FoodKind.Plant && Vector2.DistanceSquared(food.Position, center) < radius * radius)
+                            {
+                                pushed.Add(food);
+                            }
+                        }
+                    }
+                }
+
+                foreach (var food in pushed)
+                {
+                    var offset = food.Position - center;
+                    var distance = offset.Length();
+                    var direction = distance > 0.0001f ? offset / distance : Vector2.UnitY;
+                    food.Position = ClampToBounds(center + direction * (radius + Math.Max(0f, margin)));
+                    UpdateCell(food);
+                }
+            }
         }
 
         /// <summary>사각 영역(현재 위치 기준) 안의 먹이를 results에 추가합니다. 표시 컬링 등에 사용합니다.</summary>
@@ -258,7 +342,7 @@ namespace MutatIO.Shared.Feeding
         }
 
         /// <summary>
-        /// 흡수 반경(몸 반경 + 고정 거리)에 들어온 비어 있는 먹이를 선점시킵니다.
+        /// 흡수 반경(몸 반경 + 고정 거리)에 들어온, 역할상 먹을 수 있는 비어 있는 먹이를 선점시킵니다. 육식은 초식 먹이를 끌어당기지 않습니다.
         /// 먼저 반경에 들어온 생명체가 선점하며, 선점은 대상이 사라질 때까지 유지합니다(거리로 해제하지 않음).
         /// 같은 스텝에 여러 생명체가 들어오면 생명체 목록 순서상 먼저 판정된 하나에 배정합니다.
         /// </summary>
@@ -284,6 +368,7 @@ namespace MutatIO.Shared.Feeding
                         foreach (var food in cell)
                         {
                             if (food.AttractorId == FoodItem.NoAttractor
+                                && EcologyRules.CanEat(creature.Role, food.Kind)
                                 && Vector2.DistanceSquared(food.Position, center) <= rangeSquared)
                             {
                                 food.AttractorId = creature.Id;
@@ -397,6 +482,12 @@ namespace MutatIO.Shared.Feeding
         private float GetMagnetRadius(Creature creature)
         {
             return creature.Radius + settings.magnetRange;
+        }
+
+        private Vector2 ClampToBounds(Vector2 position)
+        {
+            var half = new Vector2(bounds.HalfWidth, bounds.HalfHeight);
+            return Vector2.Clamp(position, -half, half);
         }
 
         private static int Clamp(int value, int min, int max)

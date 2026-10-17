@@ -4,6 +4,9 @@ namespace MutatIO.Shared.Creatures
     {
         /// <summary>포만 게이지 소진.</summary>
         Starvation = 1,
+
+        /// <summary>점수가 더 높은 육식과의 접촉.</summary>
+        Killed = 2,
     }
 
     /// <summary>
@@ -11,14 +14,18 @@ namespace MutatIO.Shared.Creatures
     /// </summary>
     public readonly struct CreatureDeath
     {
-        public CreatureDeath(Creature creature, DeathCause cause)
+        public CreatureDeath(Creature creature, DeathCause cause, Creature killer = null)
         {
             Creature = creature;
             Cause = cause;
+            Killer = killer;
         }
 
         public Creature Creature { get; }
 
         public DeathCause Cause { get; }
+
+        /// <summary>처치한 육식입니다. 굶주림 사망이면 null입니다.</summary>
+        public Creature Killer { get; }
     }
 }

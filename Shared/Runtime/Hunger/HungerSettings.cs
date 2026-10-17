@@ -21,6 +21,12 @@ namespace MutatIO.Shared.Hunger
         /// <summary>(FOOD-05) 초식 먹이 하나의 기본 포만 회복량(초기 몸집 기준). 게이지 단위.</summary>
         public float plantSatiety = 4f;
 
+        /// <summary>(FOOD-05) 육식 먹이(고기) 하나의 기본 포만 회복량(초기 몸집, 육식 기준). 게이지 단위.</summary>
+        public float meatSatiety = 8f;
+
+        /// <summary>(FOOD-06) 초식 상태에서 고기를 먹을 때의 포만 회복 효율. 배율. 초기 아이디어 0.5.</summary>
+        public float herbivoreMeatEfficiency = 0.5f;
+
         /// <summary>
         /// (HUNGER-05) 몸집별 먹이당 포만 회복 배율의 지수. 배율 = 몸집^(-지수). 0이면 몸집과 무관합니다.
         /// 임시: 곡선 형태도 임시안입니다.

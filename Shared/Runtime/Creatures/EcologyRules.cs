@@ -3,8 +3,7 @@ using MutatIO.Shared.Feeding;
 namespace MutatIO.Shared.Creatures
 {
     /// <summary>
-    /// 역할·점수에 따른 확정 생태 규칙입니다(docs/DECISIONS.md). 판정 자체는 M6에서 시뮬레이션에 반영하며,
-    /// 현재는 봇이 위험·사냥감·먹을 수 있는 먹이를 판단하는 데 사용합니다.
+    /// 역할·점수에 따른 확정 생태 규칙입니다(docs/DECISIONS.md). 시뮬레이션의 흡수·접촉 판정과 봇 판단이 함께 사용합니다.
     /// </summary>
     public static class EcologyRules
     {

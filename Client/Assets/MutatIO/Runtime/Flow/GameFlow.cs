@@ -16,16 +16,20 @@ namespace MutatIO.Flow
 
     /// <summary>
     /// 이번 생의 결과입니다.
-    /// 임시: 점수 외 결과 항목(생존 시간·최고 순위·처치 수 등)은 미결정이므로 점수만 담습니다.
+    /// 임시: 점수 외 결과 항목(생존 시간·최고 순위·처치 수 등)은 미결정이므로 점수와 플레이 확인용 사망 원인 문구만 담습니다.
     /// </summary>
     public readonly struct PlayResult
     {
-        public PlayResult(int score)
+        public PlayResult(int score, string deathReason = null)
         {
             Score = score;
+            DeathReason = deathReason ?? string.Empty;
         }
 
         public int Score { get; }
+
+        /// <summary>사망 원인 표시 문구입니다. 없으면 빈 문자열입니다.</summary>
+        public string DeathReason { get; }
     }
 
     /// <summary>
