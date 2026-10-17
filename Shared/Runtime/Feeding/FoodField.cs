@@ -116,6 +116,12 @@ namespace MutatIO.Shared.Feeding
             }
         }
 
+        /// <summary>먹이가 아직 필드에 남아 있는지입니다. 섭취·제거된 먹이는 false입니다.</summary>
+        public bool Contains(FoodItem food)
+        {
+            return food != null && food.ListIndex < items.Count && items[food.ListIndex] == food;
+        }
+
         /// <summary>타일 리젠과 무관한 먹이를 직접 생성합니다. 어느 타일의 상한에도 포함하지 않습니다.</summary>
         public FoodItem Spawn(FoodKind kind, Vector2 position)
         {

@@ -31,6 +31,9 @@ namespace MutatIO.Shared.Creatures
 
         public float Radius => Size * RadiusPerSize;
 
+        /// <summary>현재 역할입니다. 모두 초식으로 시작합니다.</summary>
+        public CreatureRole Role { get; private set; } = CreatureRole.Herbivore;
+
         /// <summary>남은 포만량입니다. 0이 되면 사망합니다.</summary>
         public float Satiety { get; private set; }
 
@@ -44,6 +47,12 @@ namespace MutatIO.Shared.Creatures
         {
             Intake += Math.Max(0, count);
             Size = GrowthSystem.GetSize(Intake, growth);
+        }
+
+        /// <summary>역할을 바꿉니다. 변이 판정(M6)과 개발용 확인에서 사용합니다.</summary>
+        public void SetRole(CreatureRole role)
+        {
+            Role = role;
         }
 
         public void SetSatiety(float satiety)

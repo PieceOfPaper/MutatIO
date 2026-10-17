@@ -5,6 +5,7 @@ using MutatIO.Feeding;
 using MutatIO.Flow;
 using MutatIO.Input;
 using MutatIO.Profile;
+using MutatIO.Shared.Bots;
 using MutatIO.Shared.Creatures;
 using MutatIO.World;
 using UnityEngine;
@@ -16,16 +17,19 @@ namespace MutatIO.Prototype
 {
     /// <summary>
     /// 로컬 프로토타입 씬을 런타임에 구성합니다. Shared 월드 시뮬레이션을 실행하고 맵·먹이·내 생명체·조작 UI를 만듭니다.
-    /// M2 이동·조작 확인, M3 먹이·성장·카메라 줌 확인, M4 허기·사망·결과·첫 화면 복귀 확인, M5 첫 화면 선택·저장 확인에 사용합니다.
+    /// M2 이동·조작 확인, M3 먹이·성장·카메라 줌 확인, M4 허기·사망·결과·첫 화면 복귀 확인, M5 첫 화면 선택·저장 확인,
+    /// M6 전 봇 플레이어 확인에 사용합니다.
     /// WebGL 기본 폰트에 한글 글리프가 없으므로 화면 문구는 영어로 둡니다.
     /// </summary>
     [AddComponentMenu("MutatIO/Prototype/Prototype Bootstrap")]
     public sealed class PrototypeBootstrap : MonoBehaviour
     {
         private const float MapBorderThickness = 0.3f;
+        private const float BotSkillStep = 0.2f;
 
         // 임시 팔레트 기본안(docs/DECISIONS.md): 초식 #4CC9F0, 월드 바탕 #17212B. 월드 밖은 바탕과 구분되는 더 어두운 색입니다.
         private static readonly Color HerbivoreColor = new Color32(0x4C, 0xC9, 0xF0, 0xFF);
+        private static readonly Color CarnivoreColor = new Color32(0xB5, 0x6E, 0xFF, 0xFF);
         private static readonly Color WorldGroundColor = new Color32(0x17, 0x21, 0x2B, 0xFF);
         private static readonly Color OutsideWorldColor = new Color32(0x08, 0x0C, 0x10, 0xFF);
         private static readonly Color OptionColor = new Color(1f, 1f, 1f, 0.12f);
@@ -35,6 +39,8 @@ namespace MutatIO.Prototype
         private readonly PlayerProfileStore profileStore = new PlayerProfileStore();
         private readonly Dictionary<string, Image> appearanceOptions = new Dictionary<string, Image>();
         private readonly Dictionary<ControlMode, Image> modeOptions = new Dictionary<ControlMode, Image>();
+        private readonly Dictionary<Bot, GameObject> botObjects = new Dictionary<Bot, GameObject>();
+        private readonly System.Text.StringBuilder statusBuilder = new System.Text.StringBuilder();
 
         private Camera worldCamera;
         private WorldCameraController cameraController;
@@ -70,6 +76,8 @@ namespace MutatIO.Prototype
             var foodView = new GameObject("FoodField").AddComponent<FoodFieldView>();
             foodView.Bind(runner.Simulation, PrototypeSprites.Circle, worldCamera);
             runner.LocalPlayerDied += OnLocalPlayerDied;
+            runner.Bots.BotJoined += OnBotJoined;
+            runner.Bots.BotLeft += OnBotLeft;
 
             EnsureEventSystem();
             var canvas = CreateCanvas();
@@ -106,6 +114,8 @@ namespace MutatIO.Prototype
             if (runner != null)
             {
                 runner.LocalPlayerDied -= OnLocalPlayerDied;
+                runner.Bots.BotJoined -= OnBotJoined;
+                runner.Bots.BotLeft -= OnBotLeft;
             }
         }
 
@@ -122,13 +132,23 @@ namespace MutatIO.Prototype
             var dash = state.IsDashing ? "dashing"
                 : state.DashCooldownRemaining > 0f ? $"{state.DashCooldownRemaining:0.0}s"
                 : "ready";
-            statusText.text =
-                $"Name: {currentProfile.Nickname}  Look: {currentProfile.AppearanceId}\n" +
-                $"Mode: {commandSource.Mode}\n" +
-                $"Score: {player.Intake}  Size: {player.Size:0.00}\n" +
-                $"Satiety: {player.Satiety:0.0} / {hunger.maxSatiety:0}\n" +
-                $"Speed: {state.Velocity.Length():0.00}  Dash: {dash}\n" +
-                $"Plants: {runner.Simulation.Food.PlantCount}  Pos: {state.Position.X:0}, {state.Position.Y:0}";
+            var bots = runner.Bots;
+            statusBuilder.Clear();
+            statusBuilder
+                .Append($"Name: {currentProfile.Nickname}  Look: {currentProfile.AppearanceId}\n")
+                .Append($"Mode: {commandSource.Mode}  Role: {player.Role}\n")
+                .Append($"Score: {player.Intake}  Size: {player.Size:0.00}\n")
+                .Append($"Satiety: {player.Satiety:0.0} / {hunger.maxSatiety:0}\n")
+                .Append($"Speed: {state.Velocity.Length():0.00}  Dash: {dash}\n")
+                .Append($"Plants: {runner.Simulation.Food.PlantCount}  Pos: {state.Position.X:0}, {state.Position.Y:0}\n")
+                .Append($"Bots: {bots.Bots.Count} (+{bots.PendingJoinCount} joining)  Level: {bots.SkillLevel:0.0}\n");
+            foreach (var bot in bots.Bots)
+            {
+                var creature = bot.Creature;
+                statusBuilder.Append($"  {bot.Name}: {bot.Intent}  Score {creature.Intake}  Satiety {creature.Satiety:0}\n");
+            }
+
+            statusText.text = statusBuilder.ToString();
         }
 
         private void SetMode(ControlMode mode)
@@ -203,7 +223,7 @@ namespace MutatIO.Prototype
             }
 
             var player = runner.SpawnLocalPlayer();
-            creatureObject = CreateCreature(player, currentProfile.AppearanceId);
+            creatureObject = CreateCreature(player, currentProfile.AppearanceId, "PlayerCreature");
             commandSource.SetCharacter(creatureObject.transform);
             if (cameraController != null)
             {
@@ -239,6 +259,57 @@ namespace MutatIO.Prototype
         {
             // 개발용: 포만을 거의 비워 굶주림 사망과 결과 화면을 빠르게 확인합니다.
             runner.LocalPlayer?.SetSatiety(1f);
+        }
+
+        private void ToggleRole()
+        {
+            // 개발용: 변이(M6) 전에 내 역할을 바꿔 봇의 도주(초식 봇)와 추격(육식 봇 상대) 판단을 확인합니다.
+            var player = runner.LocalPlayer;
+            player?.SetRole(player.Role == CreatureRole.Herbivore ? CreatureRole.Carnivore : CreatureRole.Herbivore);
+        }
+
+        private void ChangeBotSkill(float delta)
+        {
+            // 개발용: 봇 수준(BOT-03)을 바꿉니다. 0에 가까우면 봇이 먹이를 거의 찾지 않아 굶어 죽고, 빈자리는 같은 수준의 새 봇이 채웁니다.
+            runner.Bots.SkillLevel = Mathf.Round((runner.Bots.SkillLevel + delta) * 10f) / 10f;
+        }
+
+        private void OnBotJoined(Bot bot)
+        {
+            // 임시: 외형은 표시 정보이므로 봇마다 무작위로 고릅니다. 온라인 단계에서는 서버가 정한 외형을 받아야 합니다.
+            var appearanceId = CharacterAppearances.GetId(Random.Range(0, CharacterAppearances.Count));
+            var botObject = CreateCreature(bot.Creature, appearanceId, "Bot " + bot.Name);
+            AddNameLabel(botObject.transform, bot.Name);
+            botObjects[bot] = botObject;
+        }
+
+        private void OnBotLeft(Bot bot)
+        {
+            if (botObjects.TryGetValue(bot, out var botObject))
+            {
+                botObjects.Remove(bot);
+                Destroy(botObject);
+            }
+        }
+
+        /// <summary>
+        /// 임시: 머리 위 닉네임 HUD(M7) 전까지 봇 이름만 간단한 월드 문자로 표시합니다. 몸집과 함께 커집니다.
+        /// </summary>
+        private void AddNameLabel(Transform parent, string text)
+        {
+            var label = new GameObject("NameLabel").AddComponent<TextMesh>();
+            label.transform.SetParent(parent, false);
+            label.transform.localPosition = new Vector3(0f, 0.95f, 0f);
+            label.font = font;
+            label.text = text;
+            label.fontSize = 48;
+            label.characterSize = 0.06f;
+            label.anchor = TextAnchor.LowerCenter;
+            label.alignment = TextAlignment.Center;
+            label.color = new Color(1f, 1f, 1f, 0.85f);
+            var renderer = label.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = font.material;
+            renderer.sortingOrder = 3;
         }
 
         private void CreateMap()
@@ -279,32 +350,38 @@ namespace MutatIO.Prototype
         /// 원형 몸체에 귀(몸 뒤)와 얼굴(몸 위)을 별도 스프라이트로 얹습니다. 장식은 표시 전용이며 충돌 반경은 몸 원 그대로입니다.
         /// 몸과 귀의 색은 역할(초식·육식) 표현이고, 외형은 장식 형태로만 구분합니다.
         /// </summary>
-        private static GameObject CreateCreature(Creature creature, string appearanceId)
+        private static GameObject CreateCreature(Creature creature, string appearanceId, string objectName)
         {
-            var creatureObject = new GameObject("PlayerCreature");
+            var creatureObject = new GameObject(objectName);
             var body = creatureObject.AddComponent<SpriteRenderer>();
             body.sprite = PrototypeSprites.Circle;
-            body.color = HerbivoreColor;
             body.sortingOrder = 1;
 
+            var view = creatureObject.AddComponent<CreatureView>();
             var ears = PrototypeSprites.GetEars(appearanceId);
             if (ears != null)
             {
-                AddCreaturePart(creatureObject.transform, "Ears", ears, HerbivoreColor, 0);
+                var earRenderer = AddCreaturePart(creatureObject.transform, "Ears", ears, HerbivoreColor, 0);
+                view.SetRoleColors(HerbivoreColor, CarnivoreColor, body, earRenderer);
+            }
+            else
+            {
+                view.SetRoleColors(HerbivoreColor, CarnivoreColor, body);
             }
 
             AddCreaturePart(creatureObject.transform, "Face", PrototypeSprites.GetFace(appearanceId), Color.white, 2);
-            creatureObject.AddComponent<CreatureView>().Bind(creature);
+            view.Bind(creature);
             return creatureObject;
         }
 
-        private static void AddCreaturePart(Transform parent, string name, Sprite sprite, Color color, int sortingOrder)
+        private static SpriteRenderer AddCreaturePart(Transform parent, string name, Sprite sprite, Color color, int sortingOrder)
         {
             var part = new GameObject(name).AddComponent<SpriteRenderer>();
             part.transform.SetParent(parent, false);
             part.sprite = sprite;
             part.color = color;
             part.sortingOrder = sortingOrder;
+            return part;
         }
 
         private static void EnsureEventSystem()
@@ -358,13 +435,16 @@ namespace MutatIO.Prototype
 
         private void CreateControls(RectTransform gameplay)
         {
-            var status = CreateRect("Status", gameplay, new Vector2(0f, 1f), new Vector2(260f, -135f), new Vector2(480f, 250f));
+            var status = CreateRect("Status", gameplay, new Vector2(0f, 1f), new Vector2(310f, -260f), new Vector2(580f, 500f));
             statusText = CreateLabel(status, string.Empty, 28);
             statusText.alignment = TextAnchor.UpperLeft;
 
             CreateButton(gameplay, "Feed +20", new Vector2(1f, 1f), new Vector2(-430f, -50f), () => Feed(20));
             CreateButton(gameplay, "Feed +200", new Vector2(1f, 1f), new Vector2(-260f, -50f), () => Feed(200));
             CreateButton(gameplay, "Starve", new Vector2(1f, 1f), new Vector2(-90f, -50f), Starve);
+            CreateButton(gameplay, "Role", new Vector2(1f, 1f), new Vector2(-430f, -130f), ToggleRole);
+            CreateButton(gameplay, "Bot Lv -", new Vector2(1f, 1f), new Vector2(-260f, -130f), () => ChangeBotSkill(-BotSkillStep));
+            CreateButton(gameplay, "Bot Lv +", new Vector2(1f, 1f), new Vector2(-90f, -130f), () => ChangeBotSkill(BotSkillStep));
         }
 
         /// <summary>

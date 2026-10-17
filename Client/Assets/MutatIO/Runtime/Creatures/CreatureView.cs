@@ -10,11 +10,24 @@ namespace MutatIO.Creatures
     [AddComponentMenu("MutatIO/Creatures/Creature View")]
     public sealed class CreatureView : MonoBehaviour
     {
+        private SpriteRenderer[] roleRenderers;
+        private Color herbivoreColor;
+        private Color carnivoreColor;
+
         public Creature Creature { get; private set; }
 
         public void Bind(Creature creature)
         {
             Creature = creature;
+            Apply();
+        }
+
+        /// <summary>역할(초식·육식)에 따라 색을 바꿀 몸·귀 렌더러를 지정합니다. 외형 장식 형태는 역할과 무관합니다.</summary>
+        public void SetRoleColors(Color herbivore, Color carnivore, params SpriteRenderer[] renderers)
+        {
+            herbivoreColor = herbivore;
+            carnivoreColor = carnivore;
+            roleRenderers = renderers;
             Apply();
         }
 
@@ -34,6 +47,15 @@ namespace MutatIO.Creatures
             transform.position = new Vector3(position.X, position.Y, transform.position.z);
             // 몸 원의 표시 지름 = 충돌 지름입니다. 귀·얼굴 장식은 자식으로 함께 확대되지만 충돌 반경에는 포함하지 않습니다.
             transform.localScale = Vector3.one * (Creature.Radius * 2f);
+
+            if (roleRenderers != null)
+            {
+                var color = Creature.Role == CreatureRole.Carnivore ? carnivoreColor : herbivoreColor;
+                foreach (var renderer in roleRenderers)
+                {
+                    renderer.color = color;
+                }
+            }
         }
     }
 }

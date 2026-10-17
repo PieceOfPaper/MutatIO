@@ -76,7 +76,7 @@ Client/Assets/MutatIO/
     Growth/
     Combat/
     Cameras/        몸집 연동 카메라 줌 — 구현됨
-    World/          Shared 월드 시뮬레이션 실행기 — 구현됨
+    World/          Shared 월드 시뮬레이션 실행기·봇 실행 — 구현됨
     Input/          조작 4모드 → PlayerCommand, 가상패드·대시 버튼 — 구현됨
     Networking/     전송 계층(Transport/)과 NetworkClient — 구현됨
     UI/
