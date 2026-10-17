@@ -68,12 +68,12 @@
 Client/Assets/MutatIO/
   Runtime/
     Core/
-    Creatures/
+    Creatures/      로컬 개체 이동 표시(LocalCreatureMover) — M2 프로토타입
     Feeding/
     Hunger/
     Growth/
     Combat/
-    Input/
+    Input/          조작 4모드 → PlayerCommand, 가상패드·대시 버튼 — 구현됨
     Networking/     전송 계층(Transport/)과 NetworkClient — 구현됨
     UI/
   Editor/

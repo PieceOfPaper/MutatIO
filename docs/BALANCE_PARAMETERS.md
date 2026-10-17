@@ -79,7 +79,25 @@
 | HUD-01 | 랭킹 표시 수·갱신 주기 | 명·초 | 가독성과 정보 지연 |
 | HUD-02 | 닉네임·게이지 크기·표시 거리 | UI 단위·거리 | 겹침 처리 규칙과 함께 검증 |
 
-## 5. 테스트 기록 양식
+## 5. 코드 연결과 현재 임시값
+
+아래 값은 동작 확인을 위해 넣은 **임시값**이며 플레이 테스트를 거치지 않았습니다.
+
+| 항목 ID | 코드 위치 | 임시값 |
+| --- | --- | --- |
+| MOVE-01 | `MovementSettings.baseSpeed` (`Shared/Runtime/Movement`) | 5 월드 단위/초 |
+| MOVE-02 | `MovementSettings.sizeSpeedExponent` — 배율 = 몸집^(-지수), 몸집은 초기 1 기준 | 0.3 |
+| MOVE-03 | `MovementSettings.minSpeedMultiplier` | 0.4 |
+| MOVE-04, MOVE-06 | `MovementSettings.accelerationTime` — 정지→최고 속도 도달 시간, 방향 전환도 동일 응답 | 0.12초 |
+| MOVE-05 | `MovementSettings.decelerationTime` — 최고 속도→정지 시간 | 0.2초 |
+| DASH-01 | `MovementSettings.dashSpeedMultiplier` | 3배 |
+| DASH-02 | `MovementSettings.dashDuration` | 0.18초 |
+| DASH-03 | `MovementSettings.dashCooldown` — 대시 종료 시점부터 | 1.5초 |
+| DASH-04 | 미구현(임시안: 비용 없음) | — |
+| INPUT-01 | `VirtualJoystick.radius`, `deadZone` (`Client/.../Runtime/Input`) | 반경 65 캔버스 단위(테스트 씬), 데드존 0.15 |
+| INPUT-02 | `PlayerCommandSource.pointerDeadZone` — 화면 높이 대비 | 0.03 |
+
+## 6. 테스트 기록 양식
 
 | 날짜/빌드 | 항목 ID | 임시값/비교값 | 조건 | 관찰 결과 | 채택 여부·이유 |
 | --- | --- | --- | --- | --- | --- |

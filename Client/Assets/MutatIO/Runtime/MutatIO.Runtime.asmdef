@@ -2,7 +2,9 @@
   "name": "MutatIO.Runtime",
   "rootNamespace": "MutatIO",
   "references": [
-    "MutatIO.Shared"
+    "MutatIO.Shared",
+    "Unity.InputSystem",
+    "UnityEngine.UI"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

@@ -115,6 +115,44 @@ Client/Assets/MutatIO/Runtime/Networking/
 - `WebGLWebSocketTransport`는 WebGL 플레이어와 Editor에서만 컴파일됩니다. iOS 등에서 `__Internal` 심볼 링크 오류가 나지 않게 하기 위함입니다.
 - 확인용 씬: `Client/Assets/MutatIO/Scenes/NetworkTest.unity`
 
+### 이동 규칙과 입력 구조 — 로드맵 M1·M2
+
+```text
+Shared/Runtime/Movement/
+  PlayerCommand.cs       장치 독립 명령: 이동 벡터(길이 0~1)와 이번 스텝의 대시 누름
+  MovementSettings.cs    MOVE·DASH 밸런스 값(임시값, [Serializable] public 필드)
+  MovementState.cs       위치·속도·마지막 유효 방향·대시 상태
+  MovementSystem.cs      Step(ref state, command, size, settings, dt)
+Client/Assets/MutatIO/Runtime/
+  Input/PlayerCommandSource.cs  선택한 조작 모드의 장치 입력 → PlayerCommand
+  Input/VirtualJoystick.cs      좌하단 고정 가상패드. 자신을 누른 포인터만 추적
+  Input/DashButton.cs           화면 대시 버튼
+  Input/PointerFollow.cs        화면상 캐릭터 → 포인터 방향 계산
+  Input/UiPointerFilter.cs      화면 좌표가 UI 위인지 직접 레이캐스트로 판정
+  Creatures/LocalCreatureMover.cs  로컬 개체에 MovementSystem 적용·표시
+  Prototype/                    MovementTest 씬 구성용 개발 코드(런타임 생성 스프라이트·UI)
+```
+
+- 관성은 속도 벡터가 목표 속도로 일정 비율만큼 다가가는 방식입니다. 방향 전환도 같은 가속 응답을 쓰며 회전 반경 제한은 없습니다.
+- 몸집은 초기 몸집을 1로 둔 상대값입니다. 속도 배율은 `몸집^(-지수)`이며 최소 배율로 하한을 둡니다. 곡선 형태 자체도 임시입니다.
+- 대시 방향은 현재 이동 입력, 입력이 없으면 마지막 유효 방향입니다. 대기시간은 대시가 끝난 시점부터 줄어듭니다.
+- 키보드는 Input System `InputAction`(2DVector 컴포지트)으로 읽습니다. 프로젝트 전역 액션 에셋(`Assets/Settings/InputSystem_Actions.inputactions`)은 아직 쓰지 않습니다.
+- PC 마우스 추종은 매 프레임 화면상 캐릭터 위치와 커서로 방향을 다시 계산하므로 카메라가 움직여도 고정 목적지가 생기지 않습니다.
+- 터치가 감지되면 터치 조작으로, 터치 후 0.5초가 지나 마우스가 움직이면 다시 마우스 조작으로 봅니다.
+
+**임시안(2026-10-17 사용자 승인, 플레이로 확인 예정 — 확정 규칙 아님)**
+
+| 미결정 항목 | 현재 구현 |
+| --- | --- |
+| 첫 이동 전 대시 | 무시하며 대기시간도 소모하지 않음 |
+| 대시 비용 | 없음 |
+| 대시 중 방향 전환 | 불가. 시작 방향 유지 |
+| 좌클릭 유지 시 대시 | 누른 순간 1회만 |
+| 마우스·터치 중심 근처 | 데드존(화면 높이 대비 비율) 안에서 입력 0 |
+| PC 커서가 UI 위일 때 | 새 방향을 만들지 않고 직전 방향 유지 |
+| 모바일 터치 추종 | 기획서의 테스트 제안: 월드 영역을 누르는 동안 추종, 떼면 입력 0, UI에서 시작한 터치는 무시 |
+| 정지 판정 | 이동 입력 길이 0.05 이하 |
+
 ### 플랫폼별 설정
 
 | 플랫폼 | 내용 |
