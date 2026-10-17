@@ -56,7 +56,7 @@ public sealed class WorldSimulationTests
     [Fact]
     public void Creature_StaysInsideMapWhileMovingOutward()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         var creature = world.SpawnCreature(Vector2.Zero);
 
         for (var i = 0; i < 60 * 30; i++)
@@ -69,47 +69,139 @@ public sealed class WorldSimulationTests
     }
 
     [Fact]
-    public void Plants_FillToMaxWithMinimumSpacing()
+    public void Tiles_CoverMapWithFixedSize()
     {
-        var world = CreateWorld(maxPlants: 100);
+        var world = CreateWorld(maxPlantsPerTile: 0);
+
+        Assert.Equal(8, world.Food.Columns);
+        Assert.Equal(8, world.Food.Rows);
+        Assert.Equal(0, world.Food.GetTileIndex(new Vector2(-20f, -20f)));
+        Assert.Equal(63, world.Food.GetTileIndex(new Vector2(19.9f, 19.9f)));
+        world.Food.GetTileBounds(9, out var min, out var max);
+        Assert.Equal(new Vector2(-15f, -15f), min);
+        Assert.Equal(new Vector2(-10f, -10f), max);
+    }
+
+    [Fact]
+    public void Plants_FillEachTileUpToLimitInsideTile()
+    {
+        var world = CreateWorld(maxPlantsPerTile: 2);
 
         world.Food.FillPlants();
 
-        Assert.Equal(100, world.Food.PlantCount);
-        var items = world.Food.Items;
-        var spacing = world.Settings.food.plantSpacing;
-        for (var i = 0; i < items.Count; i++)
+        Assert.Equal(world.Food.TileCount * 2, world.Food.PlantCount);
+        foreach (var food in world.Food.Items)
         {
-            Assert.True(world.Bounds.Contains(items[i].Position));
-            for (var j = i + 1; j < items.Count; j++)
-            {
-                Assert.True(Vector2.Distance(items[i].Position, items[j].Position) >= spacing);
-            }
+            world.Food.GetTileBounds(food.OriginTile, out var min, out var max);
+            Assert.InRange(food.Position.X, min.X, max.X);
+            Assert.InRange(food.Position.Y, min.Y, max.Y);
+        }
+
+        for (var tile = 0; tile < world.Food.TileCount; tile++)
+        {
+            Assert.Equal(2, world.Food.GetOwnedPlantCount(tile));
         }
     }
 
     [Fact]
-    public void Plants_RegenerateAfterBeingEaten()
+    public void Plants_RegenerateInOriginTileAfterInterval()
     {
-        var world = CreateWorld(maxPlants: 10);
+        var world = CreateWorld(maxPlantsPerTile: 1);
+        world.Settings.food.plantRegenInterval = 1f;
         world.Food.FillPlants();
-        var eater = world.SpawnCreature(world.Food.Items[0].Position);
+        var food = world.Food.Items[0];
+        var tile = food.OriginTile;
+        var eater = world.SpawnCreature(food.Position);
         world.Step(Dt);
-        Assert.True(world.Food.PlantCount < 10);
+        Assert.Equal(0, world.Food.GetOwnedPlantCount(tile));
 
         world.RemoveCreature(eater.Id);
-        for (var i = 0; i < 60; i++)
+        world.Step(0.5f);
+        Assert.Equal(0, world.Food.GetOwnedPlantCount(tile));
+        world.Step(0.6f);
+
+        Assert.Equal(1, world.Food.GetOwnedPlantCount(tile));
+        Assert.Equal(world.Food.TileCount, world.Food.PlantCount);
+    }
+
+    [Fact]
+    public void Plants_DoNotRegenerateInTilesCoveredByBody()
+    {
+        var world = CreateWorld(maxPlantsPerTile: 1);
+        world.Settings.food.plantRegenInterval = 0.1f;
+        world.Settings.hunger.decayPerSecond = 0f;
+        // 반경 3인 몸 중심을 타일 모서리 근처에 두어 중심 소속 타일 외의 이웃 타일 세 곳도 덮게 합니다.
+        var creature = world.SpawnCreature(new Vector2(0.1f, 0.1f));
+        creature.AddIntake(700, world.Settings.growth);
+        Assert.Equal(3f, creature.Radius, 3);
+        var covered = new[]
+        {
+            world.Food.GetTileIndex(new Vector2(2f, 2f)),
+            world.Food.GetTileIndex(new Vector2(-2f, 2f)),
+            world.Food.GetTileIndex(new Vector2(2f, -2f)),
+            world.Food.GetTileIndex(new Vector2(-2f, -2f)),
+        };
+        var far = world.Food.GetTileIndex(new Vector2(15f, 15f));
+
+        for (var i = 0; i < 10; i++)
+        {
+            world.Step(0.2f);
+        }
+
+        foreach (var tile in covered)
+        {
+            Assert.Equal(0, world.Food.GetOwnedPlantCount(tile));
+        }
+
+        Assert.Equal(1, world.Food.GetOwnedPlantCount(far));
+
+        world.RemoveCreature(creature.Id);
+        world.Step(Dt);
+        foreach (var tile in covered)
+        {
+            Assert.Equal(1, world.Food.GetOwnedPlantCount(tile));
+        }
+    }
+
+    [Fact]
+    public void Plants_MovedOutOfTileStillCountForOriginTile()
+    {
+        var world = CreateWorld(maxPlantsPerTile: 1);
+        world.Settings.food.plantRegenInterval = 0.1f;
+        world.Food.FillPlants();
+        var tileA = world.Food.GetTileIndex(new Vector2(-12f, -12f));
+        world.Food.GetTileBounds(tileA, out var minA, out var maxA);
+        var food = FindByOrigin(world, tileA);
+        // A 타일 오른쪽 이웃 타일 깊숙이 서서 먹이를 끌어온 뒤, 먹기 전에 사라집니다.
+        var creature = world.SpawnCreature(new Vector2(maxA.X + 3f, food.Position.Y));
+        world.Settings.food.magnetRange = 10f;
+        while (food.Position.X <= maxA.X + 0.5f)
         {
             world.Step(Dt);
         }
 
-        Assert.Equal(10, world.Food.PlantCount);
+        world.RemoveCreature(creature.Id);
+        world.Step(Dt);
+        var tileB = world.Food.GetTileIndex(food.Position);
+        Assert.NotEqual(tileA, tileB);
+        Assert.Equal(FoodItem.NoAttractor, food.AttractorId);
+        Assert.Equal(tileA, food.OriginTile);
+
+        for (var i = 0; i < 20; i++)
+        {
+            world.Step(0.2f);
+        }
+
+        // A는 밀려난 먹이를 잔존으로 세어 새로 만들지 않고, B는 자신이 만든 먹이만 셉니다.
+        Assert.Equal(1, world.Food.GetOwnedPlantCount(tileA));
+        Assert.Equal(1, world.Food.GetOwnedPlantCount(tileB));
+        Assert.Single(world.Food.Items, item => item.OriginTile == tileA);
     }
 
     [Fact]
     public void Magnet_PullsNearbyFoodAndRewardsOnce()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         var creature = world.SpawnCreature(Vector2.Zero);
         var consumedCount = 0;
         world.FoodConsumed += (_, eater) =>
@@ -117,7 +209,7 @@ public sealed class WorldSimulationTests
             consumedCount++;
             Assert.Same(creature, eater);
         };
-        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(1.5f, 0f), 1f);
+        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(1.5f, 0f));
 
         world.Step(Dt);
         Assert.Equal(creature.Id, food.AttractorId);
@@ -129,7 +221,7 @@ public sealed class WorldSimulationTests
         }
 
         Assert.Equal(1, consumedCount);
-        Assert.Equal(1f, creature.Intake);
+        Assert.Equal(1, creature.Intake);
         Assert.Empty(world.Food.Items);
         Assert.True(creature.Size > 1f);
     }
@@ -137,9 +229,9 @@ public sealed class WorldSimulationTests
     [Fact]
     public void Magnet_IgnoresFoodOutsideRange()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         world.SpawnCreature(Vector2.Zero);
-        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(5f, 0f), 1f);
+        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(5f, 0f));
 
         world.Step(Dt);
 
@@ -148,28 +240,65 @@ public sealed class WorldSimulationTests
     }
 
     [Fact]
-    public void Magnet_NearestCreatureGetsContestedFood()
+    public void Magnet_FirstCreatureInRangeKeepsFoodWhenAnotherComesCloser()
     {
-        var world = CreateWorld(maxPlants: 0);
-        var near = world.SpawnCreature(new Vector2(-1f, 0f));
-        var far = world.SpawnCreature(new Vector2(1.8f, 0f));
-        world.Food.Spawn(FoodKind.Plant, new Vector2(0f, 0f), 1f);
+        var world = CreateWorld(maxPlantsPerTile: 0);
+        world.Settings.food.magnetPullSpeed = 0.5f;
+        var first = world.SpawnCreature(new Vector2(-1.9f, 0f));
+        var food = world.Food.Spawn(FoodKind.Plant, Vector2.Zero);
+        world.Step(Dt);
+        Assert.Equal(first.Id, food.AttractorId);
 
-        for (var i = 0; i < 60; i++)
+        var second = world.SpawnCreature(new Vector2(0.3f, 0f));
+        for (var i = 0; i < 300; i++)
         {
             world.Step(Dt);
         }
 
-        Assert.Equal(1f, near.Intake);
-        Assert.Equal(0f, far.Intake);
+        Assert.Equal(1, first.Intake);
+        Assert.Equal(0, second.Intake);
+    }
+
+    [Fact]
+    public void Magnet_SameStepGoesToFirstProcessedCreature()
+    {
+        var world = CreateWorld(maxPlantsPerTile: 0);
+        var a = world.SpawnCreature(new Vector2(-1.5f, 0f));
+        var b = world.SpawnCreature(new Vector2(1f, 0f));
+        var food = world.Food.Spawn(FoodKind.Plant, Vector2.Zero);
+
+        world.Step(Dt);
+
+        Assert.Equal(a.Id, food.AttractorId);
+        Assert.NotEqual(b.Id, food.AttractorId);
+    }
+
+    [Fact]
+    public void Magnet_KeepsTargetWhenAttractorMovesAway()
+    {
+        var world = CreateWorld(maxPlantsPerTile: 0);
+        world.Settings.food.magnetPullSpeed = 1f;
+        var creature = world.SpawnCreature(Vector2.Zero);
+        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(-1.9f, 0f));
+        world.Step(Dt);
+
+        // 흡수 반경보다 훨씬 멀리 달아나도 사망·이탈 전에는 선점을 풀지 않습니다.
+        for (var i = 0; i < 120; i++)
+        {
+            creature.Command = new PlayerCommand(Vector2.UnitX, false);
+            world.Step(Dt);
+        }
+
+        Assert.True(Vector2.Distance(food.Position, creature.Movement.Position) > creature.Radius + world.Settings.food.magnetRange);
+        Assert.Equal(creature.Id, food.AttractorId);
     }
 
     [Fact]
     public void Magnet_ReleasesFoodWhenAttractorIsRemoved()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         var creature = world.SpawnCreature(Vector2.Zero);
-        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(2f, 0f), 1f);
+        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(2f, 0f));
         world.Step(Dt);
         Assert.Equal(creature.Id, food.AttractorId);
 
@@ -183,11 +312,11 @@ public sealed class WorldSimulationTests
     [Fact]
     public void Growth_SlowsMovement()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         var creature = world.SpawnCreature(Vector2.Zero);
         var smallSpeed = MovementSystem.GetMaxSpeed(creature.Size, world.Settings.movement);
 
-        creature.AddIntake(200f, world.Settings.growth);
+        creature.AddIntake(200, world.Settings.growth);
 
         Assert.True(MovementSystem.GetMaxSpeed(creature.Size, world.Settings.movement) < smallSpeed);
     }
@@ -195,7 +324,7 @@ public sealed class WorldSimulationTests
     [Fact]
     public void Dash_AppliesOnlyOnceForRepeatedSteps()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         var creature = world.SpawnCreature(Vector2.Zero);
         creature.Command = new PlayerCommand(Vector2.UnitX, true);
 
@@ -208,7 +337,7 @@ public sealed class WorldSimulationTests
     [Fact]
     public void Hunger_StartsAtStartSatietyAndDrainsOverTime()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         world.Settings.hunger.startSatiety = 50f;
         world.Settings.hunger.decayPerSecond = 10f;
         var creature = world.SpawnCreature(Vector2.Zero);
@@ -224,19 +353,43 @@ public sealed class WorldSimulationTests
     {
         var hunger = new HungerSettings { maxSatiety = 100f, plantSatiety = 30f };
 
-        Assert.Equal(80f, HungerSystem.Restore(50f, HungerSystem.GetSatietyGain(FoodKind.Plant, hunger), hunger), 4);
-        Assert.Equal(100f, HungerSystem.Restore(90f, HungerSystem.GetSatietyGain(FoodKind.Plant, hunger), hunger), 4);
+        Assert.Equal(80f, HungerSystem.Restore(50f, HungerSystem.GetSatietyGain(FoodKind.Plant, 1f, hunger), hunger), 4);
+        Assert.Equal(100f, HungerSystem.Restore(90f, HungerSystem.GetSatietyGain(FoodKind.Plant, 1f, hunger), hunger), 4);
+    }
+
+    [Fact]
+    public void Hunger_BiggerBodyRecoversLessPerFoodDownToFloor()
+    {
+        var hunger = new HungerSettings { plantSatiety = 8f, sizeSatietyExponent = 1f, minSatietyMultiplier = 0.25f };
+
+        Assert.Equal(8f, HungerSystem.GetSatietyGain(FoodKind.Plant, 1f, hunger), 4);
+        Assert.Equal(4f, HungerSystem.GetSatietyGain(FoodKind.Plant, 2f, hunger), 4);
+        Assert.Equal(2f, HungerSystem.GetSatietyGain(FoodKind.Plant, 100f, hunger), 4);
+    }
+
+    [Fact]
+    public void Hunger_DecayIsSameForAnySize()
+    {
+        var world = CreateWorld(maxPlantsPerTile: 0);
+        world.Settings.hunger.decayPerSecond = 10f;
+        var small = world.SpawnCreature(new Vector2(-10f, 0f));
+        var big = world.SpawnCreature(new Vector2(10f, 0f));
+        big.AddIntake(500, world.Settings.growth);
+
+        world.Step(1f);
+
+        Assert.Equal(small.Satiety, big.Satiety, 4);
     }
 
     [Fact]
     public void Hunger_EatingInWorldRestoresSatiety()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         world.Settings.hunger.decayPerSecond = 0f;
         world.Settings.hunger.plantSatiety = 5f;
         var creature = world.SpawnCreature(Vector2.Zero);
         creature.SetSatiety(10f);
-        world.Food.Spawn(FoodKind.Plant, new Vector2(1f, 0f), 1f);
+        world.Food.Spawn(FoodKind.Plant, new Vector2(1f, 0f));
 
         for (var i = 0; i < 60; i++)
         {
@@ -249,10 +402,10 @@ public sealed class WorldSimulationTests
     [Fact]
     public void Hunger_StarvationKillsWithoutReducingScoreOrSize()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         world.Settings.hunger.decayPerSecond = 10f;
         var creature = world.SpawnCreature(Vector2.Zero);
-        creature.AddIntake(40f, world.Settings.growth);
+        creature.AddIntake(40, world.Settings.growth);
         var sizeBefore = creature.Size;
         creature.SetSatiety(5f);
         var deaths = new List<CreatureDeath>();
@@ -260,7 +413,7 @@ public sealed class WorldSimulationTests
 
         world.Step(0.4f);
         Assert.True(creature.IsAlive);
-        Assert.Equal(40f, creature.Intake);
+        Assert.Equal(40, creature.Intake);
         Assert.Equal(sizeBefore, creature.Size);
 
         world.Step(0.2f);
@@ -270,16 +423,16 @@ public sealed class WorldSimulationTests
         Assert.Equal(DeathCause.Starvation, death.Cause);
         Assert.False(creature.IsAlive);
         Assert.Empty(world.Creatures);
-        Assert.Equal(40f, creature.Intake);
+        Assert.Equal(40, creature.Intake);
         Assert.Equal(sizeBefore, creature.Size);
     }
 
     [Fact]
     public void Hunger_DeathReleasesAttractedFoodAtCurrentPosition()
     {
-        var world = CreateWorld(maxPlants: 0);
+        var world = CreateWorld(maxPlantsPerTile: 0);
         var creature = world.SpawnCreature(Vector2.Zero);
-        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(2f, 0f), 1f);
+        var food = world.Food.Spawn(FoodKind.Plant, new Vector2(2f, 0f));
         world.Step(Dt);
         Assert.Equal(creature.Id, food.AttractorId);
 
@@ -294,10 +447,25 @@ public sealed class WorldSimulationTests
         Assert.Single(world.Food.Items);
     }
 
-    private static WorldSimulation CreateWorld(int maxPlants)
+    /// <summary>테스트용 40×40 맵(5×5 타일 8×8개)입니다.</summary>
+    private static WorldSimulation CreateWorld(int maxPlantsPerTile)
     {
-        var settings = new WorldSettings();
-        settings.food.maxPlantCount = maxPlants;
+        var settings = new WorldSettings { width = 40f, height = 40f };
+        settings.food.tileSize = 5f;
+        settings.food.maxPlantsPerTile = maxPlantsPerTile;
         return new WorldSimulation(settings, seed: 1234);
+    }
+
+    private static FoodItem FindByOrigin(WorldSimulation world, int tile)
+    {
+        foreach (var item in world.Food.Items)
+        {
+            if (item.OriginTile == tile)
+            {
+                return item;
+            }
+        }
+
+        throw new InvalidOperationException($"No food from tile {tile}.");
     }
 }

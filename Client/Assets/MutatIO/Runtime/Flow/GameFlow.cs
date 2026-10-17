@@ -20,12 +20,12 @@ namespace MutatIO.Flow
     /// </summary>
     public readonly struct PlayResult
     {
-        public PlayResult(float score)
+        public PlayResult(int score)
         {
             Score = score;
         }
 
-        public float Score { get; }
+        public int Score { get; }
     }
 
     /// <summary>

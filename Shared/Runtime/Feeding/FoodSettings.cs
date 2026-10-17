@@ -9,22 +9,16 @@ namespace MutatIO.Shared.Feeding
     [Serializable]
     public sealed class FoodSettings
     {
-        /// <summary>(FOOD-01) 새 초식 먹이가 기존 먹이와 떨어져야 하는 최소 거리. 월드 단위.</summary>
-        public float plantSpacing = 1.5f;
+        /// <summary>(FOOD-01) 초식 리젠 타일 한 변의 길이. 월드 단위. 초기 가정 5.</summary>
+        public float tileSize = 5f;
 
-        /// <summary>(FOOD-02) 초식 먹이를 하나 다시 생성하는 주기. 초.</summary>
-        public float plantRegenInterval = 0.25f;
+        /// <summary>(FOOD-02) 타일 하나가 먹이를 하나 다시 생성하는 주기. 초.</summary>
+        public float plantRegenInterval = 15f;
 
-        /// <summary>(FOOD-03) 맵의 초식 먹이 최대 개수. 시작 시 이 개수까지 채웁니다(임시).</summary>
-        public int maxPlantCount = 250;
+        /// <summary>(FOOD-03) 타일 하나가 생성해 남아 있을 수 있는 초식 먹이 최대 개수 n. 0이면 리젠하지 않습니다.</summary>
+        public int maxPlantsPerTile = 1;
 
-        /// <summary>(FOOD-04) 초식 먹이 하나의 섭취량(점수) 가치.</summary>
-        public float plantIntake = 1f;
-
-        /// <summary>
-        /// (MAGNET-01, MAGNET-04) 몸 가장자리에서 흡수가 시작되는 거리. 월드 단위.
-        /// 임시: 흡수 반경 = 몸 반경 + 이 값이므로 몸집이 커지면 몸 반경만큼 함께 넓어집니다.
-        /// </summary>
+        /// <summary>(MAGNET-01) 몸 표면에서 흡수가 시작되는 고정 거리. 월드 단위. 흡수 반경 = 몸 반경 + 이 값.</summary>
         public float magnetRange = 1.5f;
 
         /// <summary>(MAGNET-02) 흡수 중인 먹이가 끌려가는 속도. 월드 단위/초.</summary>
@@ -32,11 +26,5 @@ namespace MutatIO.Shared.Feeding
 
         /// <summary>(MAGNET-03) 몸 가장자리에서 이 거리 안에 들어오면 섭취를 완료합니다. 월드 단위.</summary>
         public float consumeDistance = 0f;
-
-        /// <summary>
-        /// (MAGNET-05) 흡수 대상이 흡수 반경보다 이만큼 더 멀어지면 끌림을 해제합니다. 월드 단위.
-        /// 임시: 흡수 도중 대상이 멀어질 때의 처리는 미결정입니다.
-        /// </summary>
-        public float magnetReleaseMargin = 1f;
     }
 }

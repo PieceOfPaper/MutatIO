@@ -24,7 +24,10 @@ namespace MutatIO.Prototype
     {
         private const float MapBorderThickness = 0.3f;
 
-        private static readonly Color HerbivoreColor = new Color(0.55f, 0.85f, 1f);
+        // 임시 팔레트 기본안(docs/DECISIONS.md): 초식 #4CC9F0, 월드 바탕 #17212B. 월드 밖은 바탕과 구분되는 더 어두운 색입니다.
+        private static readonly Color HerbivoreColor = new Color32(0x4C, 0xC9, 0xF0, 0xFF);
+        private static readonly Color WorldGroundColor = new Color32(0x17, 0x21, 0x2B, 0xFF);
+        private static readonly Color OutsideWorldColor = new Color32(0x08, 0x0C, 0x10, 0xFF);
         private static readonly Color OptionColor = new Color(1f, 1f, 1f, 0.12f);
         private static readonly Color SelectedOptionColor = new Color(0.4f, 0.8f, 0.5f, 0.6f);
 
@@ -59,13 +62,13 @@ namespace MutatIO.Prototype
             if (worldCamera != null)
             {
                 worldCamera.orthographic = true;
-                worldCamera.backgroundColor = new Color(0.04f, 0.05f, 0.07f);
+                worldCamera.backgroundColor = OutsideWorldColor;
             }
 
             runner = gameObject.AddComponent<WorldSimulationRunner>();
             CreateMap();
             var foodView = new GameObject("FoodField").AddComponent<FoodFieldView>();
-            foodView.Bind(runner.Simulation, PrototypeSprites.Circle);
+            foodView.Bind(runner.Simulation, PrototypeSprites.Circle, worldCamera);
             runner.LocalPlayerDied += OnLocalPlayerDied;
 
             EnsureEventSystem();
@@ -89,6 +92,8 @@ namespace MutatIO.Prototype
                 {
                     cameraController = worldCamera.gameObject.AddComponent<WorldCameraController>();
                 }
+
+                cameraController.SetWorldBounds(runner.Simulation.Bounds);
             }
 
             flow.StateChanged += ApplyState;
@@ -120,10 +125,10 @@ namespace MutatIO.Prototype
             statusText.text =
                 $"Name: {currentProfile.Nickname}  Look: {currentProfile.AppearanceId}\n" +
                 $"Mode: {commandSource.Mode}\n" +
-                $"Score: {player.Intake:0}  Size: {player.Size:0.00}\n" +
+                $"Score: {player.Intake}  Size: {player.Size:0.00}\n" +
                 $"Satiety: {player.Satiety:0.0} / {hunger.maxSatiety:0}\n" +
                 $"Speed: {state.Velocity.Length():0.00}  Dash: {dash}\n" +
-                $"Plants: {runner.Simulation.Food.PlantCount}";
+                $"Plants: {runner.Simulation.Food.PlantCount}  Pos: {state.Position.X:0}, {state.Position.Y:0}";
         }
 
         private void SetMode(ControlMode mode)
@@ -151,7 +156,7 @@ namespace MutatIO.Prototype
             resultPanel.SetActive(state == GameFlowState.Result);
             if (state == GameFlowState.Result)
             {
-                resultText.text = $"GAME OVER\n\nScore: {flow.LastResult.Score:0}";
+                resultText.text = $"GAME OVER\n\nScore: {flow.LastResult.Score}";
             }
         }
 
@@ -224,7 +229,7 @@ namespace MutatIO.Prototype
             flow.EndPlay(new PlayResult(death.Creature.Intake));
         }
 
-        private void Feed(float intake)
+        private void Feed(int intake)
         {
             // 개발용: 먹이를 먹은 것처럼 섭취량을 더해 성장·속도·줌 변화를 빠르게 확인합니다.
             runner.LocalPlayer?.AddIntake(intake, runner.Simulation.Settings.growth);
@@ -243,7 +248,7 @@ namespace MutatIO.Prototype
 
             var ground = new GameObject("MapGround").AddComponent<SpriteRenderer>();
             ground.sprite = PrototypeSprites.Square;
-            ground.color = new Color(0.08f, 0.1f, 0.13f);
+            ground.color = WorldGroundColor;
             ground.transform.localScale = new Vector3(size.x, size.y, 1f);
             ground.sortingOrder = -20;
 
@@ -270,15 +275,36 @@ namespace MutatIO.Prototype
             border.sortingOrder = -5;
         }
 
+        /// <summary>
+        /// 원형 몸체에 귀(몸 뒤)와 얼굴(몸 위)을 별도 스프라이트로 얹습니다. 장식은 표시 전용이며 충돌 반경은 몸 원 그대로입니다.
+        /// 몸과 귀의 색은 역할(초식·육식) 표현이고, 외형은 장식 형태로만 구분합니다.
+        /// </summary>
         private static GameObject CreateCreature(Creature creature, string appearanceId)
         {
             var creatureObject = new GameObject("PlayerCreature");
-            var renderer = creatureObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = PrototypeSprites.Appearance(appearanceId);
-            // 색은 역할(초식·육식) 표현입니다. 외형은 색이 아니라 무늬로 구분합니다.
-            renderer.color = HerbivoreColor;
+            var body = creatureObject.AddComponent<SpriteRenderer>();
+            body.sprite = PrototypeSprites.Circle;
+            body.color = HerbivoreColor;
+            body.sortingOrder = 1;
+
+            var ears = PrototypeSprites.GetEars(appearanceId);
+            if (ears != null)
+            {
+                AddCreaturePart(creatureObject.transform, "Ears", ears, HerbivoreColor, 0);
+            }
+
+            AddCreaturePart(creatureObject.transform, "Face", PrototypeSprites.GetFace(appearanceId), Color.white, 2);
             creatureObject.AddComponent<CreatureView>().Bind(creature);
             return creatureObject;
+        }
+
+        private static void AddCreaturePart(Transform parent, string name, Sprite sprite, Color color, int sortingOrder)
+        {
+            var part = new GameObject(name).AddComponent<SpriteRenderer>();
+            part.transform.SetParent(parent, false);
+            part.sprite = sprite;
+            part.color = color;
+            part.sortingOrder = sortingOrder;
         }
 
         private static void EnsureEventSystem()
@@ -336,8 +362,8 @@ namespace MutatIO.Prototype
             statusText = CreateLabel(status, string.Empty, 28);
             statusText.alignment = TextAnchor.UpperLeft;
 
-            CreateButton(gameplay, "Feed +20", new Vector2(1f, 1f), new Vector2(-430f, -50f), () => Feed(20f));
-            CreateButton(gameplay, "Feed +200", new Vector2(1f, 1f), new Vector2(-260f, -50f), () => Feed(200f));
+            CreateButton(gameplay, "Feed +20", new Vector2(1f, 1f), new Vector2(-430f, -50f), () => Feed(20));
+            CreateButton(gameplay, "Feed +200", new Vector2(1f, 1f), new Vector2(-260f, -50f), () => Feed(200));
             CreateButton(gameplay, "Starve", new Vector2(1f, 1f), new Vector2(-90f, -50f), Starve);
         }
 
@@ -358,11 +384,7 @@ namespace MutatIO.Prototype
             {
                 var id = CharacterAppearances.GetId(i);
                 var background = CreateButton(panel, string.Empty, center, new Vector2(-225f + i * 150f, 115f), () => SelectAppearance(id), new Vector2(120f, 120f));
-                var preview = CreateRect("Preview", (RectTransform)background.transform, center, Vector2.zero, new Vector2(90f, 90f));
-                var image = preview.gameObject.AddComponent<Image>();
-                image.sprite = PrototypeSprites.Appearance(id);
-                image.color = HerbivoreColor;
-                image.raycastTarget = false;
+                CreateAppearancePreview((RectTransform)background.transform, id, 66f);
                 appearanceOptions[id] = background;
             }
 
@@ -381,6 +403,28 @@ namespace MutatIO.Prototype
 
             CreateButton(panel, "PLAY", center, new Vector2(0f, -290f), EnterWorld, new Vector2(220f, 76f));
             titlePanel = panel.gameObject;
+        }
+
+        /// <summary>귀·몸·얼굴 순서로 겹친 외형 미리보기입니다. bodyDiameter는 몸 원의 UI 크기입니다.</summary>
+        private static void CreateAppearancePreview(RectTransform parent, string appearanceId, float bodyDiameter)
+        {
+            var ears = PrototypeSprites.GetEars(appearanceId);
+            if (ears != null)
+            {
+                AddPreviewImage(parent, "Ears", ears, HerbivoreColor, bodyDiameter * PrototypeSprites.EarSpriteScale);
+            }
+
+            AddPreviewImage(parent, "Body", PrototypeSprites.Circle, HerbivoreColor, bodyDiameter);
+            AddPreviewImage(parent, "Face", PrototypeSprites.GetFace(appearanceId), Color.white, bodyDiameter);
+        }
+
+        private static void AddPreviewImage(RectTransform parent, string name, Sprite sprite, Color color, float size)
+        {
+            var rect = CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(0f, -4f), new Vector2(size, size));
+            var image = rect.gameObject.AddComponent<Image>();
+            image.sprite = sprite;
+            image.color = color;
+            image.raycastTarget = false;
         }
 
         private void CreateCaption(RectTransform parent, string text, float y)

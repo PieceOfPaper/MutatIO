@@ -14,9 +14,9 @@ namespace MutatIO.Tests.EditMode
             Assert.That(flow.Enter(), Is.True);
             Assert.That(flow.State, Is.EqualTo(GameFlowState.Playing));
 
-            Assert.That(flow.EndPlay(new PlayResult(42f)), Is.True);
+            Assert.That(flow.EndPlay(new PlayResult(42)), Is.True);
             Assert.That(flow.State, Is.EqualTo(GameFlowState.Result));
-            Assert.That(flow.LastResult.Score, Is.EqualTo(42f));
+            Assert.That(flow.LastResult.Score, Is.EqualTo(42));
 
             Assert.That(flow.ConfirmResult(), Is.True);
             Assert.That(flow.State, Is.EqualTo(GameFlowState.Title));
@@ -29,15 +29,15 @@ namespace MutatIO.Tests.EditMode
             var changes = 0;
             flow.StateChanged += _ => changes++;
 
-            Assert.That(flow.EndPlay(new PlayResult(1f)), Is.False);
+            Assert.That(flow.EndPlay(new PlayResult(1)), Is.False);
             Assert.That(flow.ConfirmResult(), Is.False);
             flow.Enter();
             Assert.That(flow.Enter(), Is.False);
-            flow.EndPlay(new PlayResult(5f));
-            Assert.That(flow.EndPlay(new PlayResult(9f)), Is.False);
+            flow.EndPlay(new PlayResult(5));
+            Assert.That(flow.EndPlay(new PlayResult(9)), Is.False);
 
             Assert.That(flow.State, Is.EqualTo(GameFlowState.Result));
-            Assert.That(flow.LastResult.Score, Is.EqualTo(5f));
+            Assert.That(flow.LastResult.Score, Is.EqualTo(5));
             Assert.That(changes, Is.EqualTo(2));
         }
     }

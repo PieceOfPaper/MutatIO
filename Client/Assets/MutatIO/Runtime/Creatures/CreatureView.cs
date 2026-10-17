@@ -32,7 +32,7 @@ namespace MutatIO.Creatures
 
             var position = Creature.Movement.Position;
             transform.position = new Vector3(position.X, position.Y, transform.position.z);
-            // 임시: 외형 크기와 충돌 반경의 관계(CONTACT-01)는 미결정입니다. 현재 외형 지름은 충돌 지름과 같습니다.
+            // 몸 원의 표시 지름 = 충돌 지름입니다. 귀·얼굴 장식은 자식으로 함께 확대되지만 충돌 반경에는 포함하지 않습니다.
             transform.localScale = Vector3.one * (Creature.Radius * 2f);
         }
     }

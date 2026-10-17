@@ -38,10 +38,10 @@ namespace MutatIO.Tests.EditMode
         [Test]
         public void SaveThenLoad_RestoresSelection()
         {
-            store.Save(new PlayerProfile(CharacterAppearances.Eyes, "Amoeba", ControlMode.ArrowKeys));
+            store.Save(new PlayerProfile(CharacterAppearances.RoundEars, "Amoeba", ControlMode.ArrowKeys));
 
             var loaded = store.Load(isMobile: true);
-            Assert.That(loaded.AppearanceId, Is.EqualTo(CharacterAppearances.Eyes));
+            Assert.That(loaded.AppearanceId, Is.EqualTo(CharacterAppearances.RoundEars));
             Assert.That(loaded.Nickname, Is.EqualTo("Amoeba"));
             Assert.That(loaded.ControlMode, Is.EqualTo(ControlMode.ArrowKeys));
         }

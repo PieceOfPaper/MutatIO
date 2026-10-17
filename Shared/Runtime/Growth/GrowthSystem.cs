@@ -3,8 +3,7 @@ using System;
 namespace MutatIO.Shared.Growth
 {
     /// <summary>
-    /// 섭취량에서 몸집을 계산합니다.
-    /// 임시: 현재는 점수와 질량을 나누지 않고 이번 생의 누적 섭취량 하나로 점수와 몸집을 모두 정합니다.
+    /// 점수(섭취 완료한 먹이 개수)에서 몸집을 계산합니다. 점수와 독립된 질량 자원은 두지 않습니다.
     /// </summary>
     public static class GrowthSystem
     {

@@ -80,8 +80,9 @@ namespace MutatIO.Shared.World
             foreach (var consumption in consumedThisStep)
             {
                 var eater = consumption.Creature;
-                eater.AddIntake(consumption.Food.Intake, Settings.growth);
-                var gain = HungerSystem.GetSatietyGain(consumption.Food.Kind, Settings.hunger);
+                // 회복 배율은 이 먹이를 먹기 전 몸집으로 계산합니다.
+                var gain = HungerSystem.GetSatietyGain(consumption.Food.Kind, eater.Size, Settings.hunger);
+                eater.AddIntake(1, Settings.growth);
                 eater.SetSatiety(HungerSystem.Restore(eater.Satiety, gain, Settings.hunger));
                 FoodConsumed?.Invoke(consumption.Food, eater);
             }

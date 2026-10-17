@@ -119,7 +119,7 @@
 
 아래 값은 동작 확인을 위해 넣은 **임시값**이며 플레이 테스트를 거치지 않았습니다.
 
-M3 구현은 2026-10-17 타일 리젠·흡수 규칙 확정 이전의 임시안을 따릅니다. '확정 기획과 차이' 표시가 있는 행은 Phase 1 M7 완료 후 기획서와 한 번에 대조해 정리합니다.
+M1~M5 구현은 2026-10-17 M6 착수 전에 확정 기획에 맞춰 정리했습니다.
 
 | 항목 ID | 코드 위치 | 임시값 |
 | --- | --- | --- |
@@ -134,23 +134,22 @@ M3 구현은 2026-10-17 타일 리젠·흡수 규칙 확정 이전의 임시안�
 | DASH-04 | 미구현(임시안: 비용 없음) | — |
 | INPUT-01 | `VirtualJoystick.radius`, `deadZone` (`Client/.../Runtime/Input`) | 반경 65 캔버스 단위(테스트 씬), 데드존 0.15 |
 | INPUT-02 | `PlayerCommandSource.pointerDeadZone` — 화면 높이 대비 | 0.03 |
-| WORLD-01 | `WorldSettings.width`, `height` (`Shared/Runtime/World`) | 80 × 80 — 확정 기획과 차이: 초기 가정 1000×1000 |
-| FOOD-01 | `FoodSettings.plantSpacing` (`Shared/Runtime/Feeding`) | 1.5 — 확정 기획과 차이: 기획은 5×5 타일 단위 리젠, 구현은 맵 전체 랜덤 + 최소 간격 |
-| FOOD-02 | `FoodSettings.plantRegenInterval` — 하나씩 생성 | 0.25초 |
-| FOOD-03 | `FoodSettings.maxPlantCount` — 시작 시 이 개수까지 채움 | 250개 — 확정 기획과 차이: 기획은 타일별 상한 n |
-| FOOD-04 | `FoodSettings.plantIntake` — 초식 먹이 섭취량(점수) | 1 — 확정 기획: 먹이 1개 = 1점 고정(FOOD-04 폐기), 값은 일치 |
+| WORLD-01 | `WorldSettings.width`, `height` (`Shared/Runtime/World`) — 시작 시에만 적용 | 1000 × 1000(초기 가정) |
+| FOOD-01 | `FoodSettings.tileSize` (`Shared/Runtime/Feeding`) — 시작 시에만 적용 | 5 × 5(초기 가정), 200 × 200 = 40,000타일 |
+| FOOD-02 | `FoodSettings.plantRegenInterval` — 타일별, 귀속 잔존 개수가 상한 미만일 때 진행 | 15초 |
+| FOOD-03 | `FoodSettings.maxPlantsPerTile` — 시작 시 모든 타일을 이 개수까지 채움 | 1개(월드 최대 40,000개) |
 | MAGNET-01 | `FoodSettings.magnetRange` — 몸 가장자리 기준 고정 거리 a | 1.5 |
 | MAGNET-02 | `FoodSettings.magnetPullSpeed` | 12 월드 단위/초 |
 | MAGNET-03 | `FoodSettings.consumeDistance` — 몸 가장자리 기준 | 0 |
-| (MAGNET-05) | `FoodSettings.magnetReleaseMargin` — 대상이 멀어지면 흡수 해제 | 1 — 확정 기획과 차이: 기획은 사망·이탈·변이 시에만 흡수 취소 |
 | HUNGER-01 | `HungerSettings.maxSatiety`, `startSatiety` (`Shared/Runtime/Hunger`) | 100, 100 |
 | HUNGER-02 | `HungerSettings.decayPerSecond` | 2 게이지/초(가득 찬 상태에서 50초 생존) |
-| HUNGER-03 | 미구현(임시안: 배율 없음) | — |
-| FOOD-05 | `HungerSettings.plantSatiety` — 초식 먹이 1개 회복량, 최대 포만에서 멈춤 | 4(2초 분량). 육식 먹이는 M6 |
+| FOOD-05 | `HungerSettings.plantSatiety` — 초기 몸집 기준 초식 먹이 1개 회복량, 최대 포만에서 멈춤 | 4(2초 분량). 육식 먹이는 M6 |
+| HUNGER-05 | `HungerSettings.sizeSatietyExponent` — 회복 배율 = 몸집^(-지수) | 0.5(몸집 2에서 0.71배) |
+| HUNGER-06 | `HungerSettings.minSatietyMultiplier` | 0.25(몸집 16 이상에서 하한) |
 | GROW-01 | `GrowthSettings.areaPerIntake` — 몸집 = √(1 + 섭취량 × 값) | 0.05 |
 | GROW-02 | `GrowthSettings.maxSize` — 초기 몸집은 1 고정 | 0(상한 없음) |
-| CAMERA-01 | `CameraZoomSettings.baseHalfHeight`, `sizeExponent` (`Client/.../Runtime/Cameras`) — 직교 크기 = 기본값 × 몸집^지수 | 8, 0.6 |
-| CAMERA-02 | `CameraZoomSettings.minHalfHeight`, `maxHalfHeight` | 8, 30 |
+| CAMERA-01 | `CameraZoomSettings.baseHalfExtent`, `sizeExponent` (`Client/.../Runtime/Cameras`) — 짧은 변 절반 범위 = 기본값 × 몸집^지수 | 8, 0.6(짧은 변 전체 16) |
+| CAMERA-02 | `CameraZoomSettings.minHalfExtent`, `maxHalfExtent` | 8, 30 |
 | CAMERA-03 | `CameraZoomSettings.zoomSmoothTime` | 0.4초 |
 | UI-01 | `PlayerProfile.MaxNicknameLength` (`Client/.../Runtime/Profile`) — 앞뒤 공백 제거 후 텍스트 요소(문자) 수 기준 | 12자 |
 

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using MutatIO.Shared.Creatures;
 using MutatIO.Shared.Feeding;
 using MutatIO.Shared.World;
 using UnityEngine;
@@ -7,8 +6,8 @@ using UnityEngine;
 namespace MutatIO.Feeding
 {
     /// <summary>
-    /// 필드의 먹이를 스프라이트로 표시합니다. 생성·섭취 이벤트로 표시 객체를 만들고 지우며, 위치는 매 프레임 갱신합니다.
-    /// 표시 객체는 재사용합니다.
+    /// 필드의 먹이를 스프라이트로 표시합니다. 매 프레임 카메라에 보이는 영역의 먹이만 조회해 재사용 스프라이트에 그립니다.
+    /// 월드 전체 먹이 수(타일 수 × 타일 상한)와 무관하게 화면 안 먹이만큼만 표시 객체를 씁니다.
     /// </summary>
     [AddComponentMenu("MutatIO/Feeding/Food Field View")]
     public sealed class FoodFieldView : MonoBehaviour
@@ -16,77 +15,65 @@ namespace MutatIO.Feeding
         [Tooltip("먹이 표시 지름. 월드 단위. 표시 전용 임시값이며 섭취 판정에는 쓰지 않습니다.")]
         [SerializeField, Min(0.01f)] private float displayDiameter = 0.4f;
 
-        [SerializeField] private Color plantColor = new Color(0.35f, 0.85f, 0.35f);
-        [SerializeField] private Color meatColor = new Color(0.9f, 0.25f, 0.25f);
+        [Tooltip("화면 밖으로 더 조회할 여유. 월드 단위.")]
+        [SerializeField, Min(0f)] private float viewMargin = 1f;
+
+        // 임시 팔레트 기본안(docs/DECISIONS.md): 초식 먹이 #67D66B, 육식 먹이 #FF6B6B.
+        [SerializeField] private Color plantColor = new Color32(0x67, 0xD6, 0x6B, 0xFF);
+        [SerializeField] private Color meatColor = new Color32(0xFF, 0x6B, 0x6B, 0xFF);
         [SerializeField] private Sprite sprite;
 
-        private readonly Dictionary<int, SpriteRenderer> active = new Dictionary<int, SpriteRenderer>();
-        private readonly Stack<SpriteRenderer> pool = new Stack<SpriteRenderer>();
+        private readonly List<FoodItem> visible = new List<FoodItem>();
+        private readonly List<SpriteRenderer> renderers = new List<SpriteRenderer>();
         private WorldSimulation simulation;
+        private Camera viewCamera;
+        private int activeCount;
 
-        public void Bind(WorldSimulation world, Sprite foodSprite)
+        public void Bind(WorldSimulation world, Sprite foodSprite, Camera camera)
         {
-            Unbind();
             simulation = world;
             sprite = foodSprite;
-            simulation.Food.Spawned += OnSpawned;
-            simulation.FoodConsumed += OnConsumed;
-            foreach (var food in simulation.Food.Items)
-            {
-                OnSpawned(food);
-            }
+            viewCamera = camera;
         }
 
         private void LateUpdate()
         {
-            if (simulation == null)
+            visible.Clear();
+            if (simulation != null && viewCamera != null)
             {
-                return;
+                var halfHeight = viewCamera.orthographicSize + viewMargin;
+                var halfWidth = viewCamera.orthographicSize * viewCamera.aspect + viewMargin;
+                var center = viewCamera.transform.position;
+                simulation.Food.QueryRect(
+                    new System.Numerics.Vector2(center.x - halfWidth, center.y - halfHeight),
+                    new System.Numerics.Vector2(center.x + halfWidth, center.y + halfHeight),
+                    visible);
             }
 
-            foreach (var food in simulation.Food.Items)
+            for (var i = 0; i < visible.Count; i++)
             {
-                if (active.TryGetValue(food.Id, out var renderer))
+                if (i == renderers.Count)
                 {
-                    renderer.transform.localPosition = new Vector3(food.Position.X, food.Position.Y, 0f);
+                    renderers.Add(CreateRenderer());
                 }
+
+                var food = visible[i];
+                var renderer = renderers[i];
+                if (i >= activeCount)
+                {
+                    renderer.gameObject.SetActive(true);
+                }
+
+                renderer.color = food.Kind == FoodKind.Meat ? meatColor : plantColor;
+                renderer.transform.localPosition = new Vector3(food.Position.X, food.Position.Y, 0f);
             }
-        }
 
-        private void OnDestroy()
-        {
-            Unbind();
-        }
-
-        private void Unbind()
-        {
-            if (simulation == null)
+            for (var i = visible.Count; i < activeCount; i++)
             {
-                return;
+                renderers[i].gameObject.SetActive(false);
             }
 
-            simulation.Food.Spawned -= OnSpawned;
-            simulation.FoodConsumed -= OnConsumed;
-            simulation = null;
-        }
-
-        private void OnSpawned(FoodItem food)
-        {
-            var renderer = pool.Count > 0 ? pool.Pop() : CreateRenderer();
-            renderer.gameObject.SetActive(true);
-            renderer.color = food.Kind == FoodKind.Meat ? meatColor : plantColor;
-            renderer.transform.localPosition = new Vector3(food.Position.X, food.Position.Y, 0f);
-            active[food.Id] = renderer;
-        }
-
-        private void OnConsumed(FoodItem food, Creature eater)
-        {
-            if (active.TryGetValue(food.Id, out var renderer))
-            {
-                active.Remove(food.Id);
-                renderer.gameObject.SetActive(false);
-                pool.Push(renderer);
-            }
+            activeCount = visible.Count;
         }
 
         private SpriteRenderer CreateRenderer()
@@ -94,6 +81,7 @@ namespace MutatIO.Feeding
             var foodObject = new GameObject("Food");
             foodObject.transform.SetParent(transform, false);
             foodObject.transform.localScale = Vector3.one * displayDiameter;
+            foodObject.SetActive(false);
             var renderer = foodObject.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.sortingOrder = -1;
