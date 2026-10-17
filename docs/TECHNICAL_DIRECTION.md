@@ -9,7 +9,20 @@
 | 폴더 | 내용 |
 | --- | --- |
 | `Client/` | Unity 클라이언트 프로젝트 |
-| `Server/` | 게임 서버 프로젝트 자리. 서버 기술이 결정될 때까지 비어 있음 |
+| `Shared/` | 클라이언트·서버 공용 순수 C# 코드. Unity 로컬 패키지 `com.mutatio.shared` |
+| `Server/` | ASP.NET Core 게임 서버 솔루션 |
+
+```text
+Shared/                       com.mutatio.shared (Unity 로컬 패키지)
+  Runtime/                    MutatIO.Shared.asmdef — noEngineReferences
+Server/
+  MutatIO.Server.slnx
+  src/MutatIO.Shared/         Shared/Runtime 소스를 netstandard2.1로 빌드
+  src/MutatIO.Server/         WebSocket 게임 서버
+  tests/MutatIO.Server.Tests/ xUnit 테스트
+```
+
+Unity는 `Client/Packages/manifest.json`의 `"com.mutatio.shared": "file:../../Shared"`로 공유 코드를 참조합니다.
 
 ## 현재 프로젝트 사양
 
@@ -59,12 +72,53 @@
 
 ### 온라인 경계
 
-최종 게임은 실시간 IO 게임이지만 네트워크 기술은 아직 선택하지 않았습니다.
+서버는 ASP.NET Core(.NET 10)로 만들고 클라이언트와 WebSocket으로 통신합니다. 근거는 [결정 기록](DECISIONS.md)에 있습니다.
 
-- 특정 SDK를 핵심 도메인 로직에 직접 퍼뜨리지 않습니다.
-- 로컬 시뮬레이션과 네트워크 표현의 경계를 둡니다.
-- 권한, 틱, 보간, 예측, WebGL 전송 제약을 검토한 뒤 솔루션을 선택합니다.
-- 온라인 솔루션이 정해지기 전에는 로컬 수직 슬라이스로 핵심 재미를 검증합니다.
+- 게임 규칙과 프로토콜 정의는 `Shared/`에 둡니다. 서버가 같은 코드로 권위 판정을 하고 클라이언트는 예측과 로컬 테스트에 사용합니다.
+- `Shared/`는 Unity와 서버 양쪽에서 컴파일되므로 netstandard2.1과 C# 9 범위만 사용하고, `UnityEngine`이나 ASP.NET Core를 참조하지 않습니다.
+- 네트워크 송수신 코드는 `Shared/`의 도메인 로직에 섞지 않고 클라이언트·서버 각자의 Networking 계층에 둡니다.
+- 서버 틱, 권위 범위, 보간·예측 방식은 아직 결정하지 않았습니다.
+
+### 서버 현재 상태
+
+| 항목 | 내용 |
+| --- | --- |
+| 런타임 | .NET 10 (`Server/global.json`으로 SDK 10.0.1xx 이상 고정) |
+| 엔드포인트 | `GET /health` — 상태와 프로토콜 버전, `/ws` — WebSocket 게임 연결 |
+| 로컬 주소 | `http://localhost:5080` (`launchSettings.json`의 `http` 프로필) |
+| 메시지 처리 | Ping → Pong 응답만 처리 |
+
+### 프로토콜 (임시)
+
+`Shared/Runtime/Protocol`의 `MessageCodec`이 `[MessageType 1바이트][내용]` 형식을 수동으로 인코딩합니다. 직렬화 라이브러리가 정해지면 교체할 **임시 구현**입니다. 현재 메시지는 연결 확인과 RTT 측정용 `Ping`/`Pong`뿐입니다.
+
+### 클라이언트 네트워크 구조
+
+```text
+Client/Assets/MutatIO/Runtime/Networking/
+  NetworkClient.cs              프로토콜 처리. 메인 스레드에서 Update()로 이벤트 전달
+  Transport/
+    IClientTransport.cs         플랫폼 공통 전송 인터페이스
+    ClientTransportFactory.cs   플랫폼별 구현 선택
+    ClientWebSocketTransport.cs Editor·데스크톱·Android·iOS (.NET ClientWebSocket)
+    WebGLWebSocketTransport.cs  WebGL (jslib로 브라우저 WebSocket 호출)
+    WebGL/MutatIOWebSocket.jslib
+  Diagnostics/NetworkPingTester.cs  연결·RTT 확인용 개발 컴포넌트
+```
+
+- 전송 계층은 송수신 이벤트를 큐에 쌓고, 게임 코드는 메인 스레드에서 `NetworkClient.Update()`로 꺼내 처리합니다. 백그라운드 스레드에서 Unity API를 호출하지 않습니다.
+- `WebGLWebSocketTransport`는 WebGL 플레이어와 Editor에서만 컴파일됩니다. iOS 등에서 `__Internal` 심볼 링크 오류가 나지 않게 하기 위함입니다.
+- 확인용 씬: `Client/Assets/MutatIO/Scenes/NetworkTest.unity`
+
+### 플랫폼별 설정
+
+| 플랫폼 | 내용 |
+| --- | --- |
+| 공통 | `runInBackground` 켬. 창이 포커스를 잃어도 네트워크 처리가 멈추지 않게 합니다. |
+| Android | Internet Access를 Require로 설정(`ForceInternetPermission`). |
+| iOS | IL2CPP(AOT)이므로 런타임 코드 생성(Reflection.Emit)을 쓰는 직렬화는 사용하지 않습니다. |
+| WebGL | 기본 IMGUI 폰트에 한글 글리프가 없어 진단 UI 문구는 영어로 둡니다. |
+| 배포 | 운영 환경은 `wss://`(TLS)를 사용합니다. HTTPS 페이지의 WebGL은 `ws://`에 접속할 수 없습니다. |
 
 ## 예상 기능 경계
 
@@ -107,12 +161,12 @@ unity command --project-path "$(pwd)/Client" console --level error --tail 20
 
 ## 아직 선택하지 않은 기술
 
-- 멀티플레이 프레임워크
-- 전용 서버 또는 호스트 방식
+- 메시지 직렬화 라이브러리 — MemoryPack 또는 MessagePack-CSharp 후보
+- 서버 틱, 권위 범위, 방(인스턴스) 구조
 - 계정 및 데이터베이스
 - 서버 호스팅
 - CI/CD
 - WebGL 배포 대상
 - 분석과 크래시 리포팅
 
-서버 기술이 결정되면 `Server/` 폴더 안에 서버 프로젝트를 구성합니다. 선택이 필요한 시점에는 후보를 비교하고 `docs/DECISIONS.md`에 근거와 함께 기록합니다.
+선택이 필요한 시점에는 후보를 비교하고 `docs/DECISIONS.md`에 근거와 함께 기록합니다.

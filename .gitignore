@@ -74,3 +74,8 @@ crashlytics-build.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# .NET server (위의 *.csproj 무시 규칙은 Unity 생성 파일용)
+!/Server/**/*.csproj
+/Server/**/[Bb]in/
+/Server/**/[Oo]bj/

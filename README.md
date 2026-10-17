@@ -38,6 +38,7 @@ MutatIO는 모든 플레이어가 작은 기본 생명체로 시작하여 필드
 - Unity Hub
 - Unity Editor **6000.3.26f1**
 - 해당 버전의 **WebGL Build Support**
+- .NET SDK **10.0** — 서버 빌드·실행
 - Git
 - 선택: Unity CLI와 Unity Pipeline
 
@@ -50,7 +51,7 @@ cd MutatIO
 
 Unity Hub에서 저장소의 `Client/` 폴더를 프로젝트로 추가한 뒤 `6000.3.26f1`로 여십시오.
 
-현재 시작 씬은 `Client/Assets/Scenes/SampleScene.unity`입니다.
+현재 시작 씬은 `Client/Assets/Scenes/SampleScene.unity`입니다. 네트워크 확인용 씬은 `Client/Assets/MutatIO/Scenes/NetworkTest.unity`입니다.
 
 ### Unity CLI 연결
 
@@ -70,9 +71,35 @@ unity command --project-path "$(pwd)/Client" console --level error --tail 20
 
 CLI와 패키지 버전에 따라 명령이 달라질 수 있으므로 자동화 전에 항상 명령 목록을 확인하십시오. Unity Pipeline은 실행 중인 Editor에 로컬 HTTP API로 연결하며 프로젝트 경로를 이용한 자동 탐색을 지원합니다.
 
+### 서버 실행
+
+```bash
+dotnet run --project Server/src/MutatIO.Server --launch-profile http
+```
+
+`http://localhost:5080/health`에서 상태를 확인할 수 있고, 게임 연결은 `ws://localhost:5080/ws`입니다. 아직 게임 메시지는 처리하지 않습니다.
+
+서버 테스트:
+
+```bash
+dotnet test Server/MutatIO.Server.slnx
+```
+
+### 클라이언트–서버 연결 확인
+
+1. 위 명령으로 서버를 실행합니다.
+2. Unity에서 `Client/Assets/MutatIO/Scenes/NetworkTest.unity`를 열고 Play합니다.
+3. 화면 왼쪽 위에 `State: Connected`와 RTT가 표시되면 정상입니다.
+
+Unity EditMode 테스트(Test Runner 또는 CLI)에는 실제 서버에 접속하는 통합 테스트(`Integration` 카테고리)가 포함되어 있습니다. 서버가 실행 중이 아니면 이 테스트는 건너뜁니다. 서버 주소는 환경 변수 `MUTATIO_SERVER_URL`로 바꿀 수 있습니다.
+
+```bash
+unity command --project-path "$(pwd)/Client" run_tests --mode EditMode
+```
+
 ## 현재 실행 및 검증 범위
 
-아직 게임플레이와 자동화된 빌드·테스트 파이프라인은 준비되지 않았습니다. 기능을 추가할 때는 최소한 다음을 확인해야 합니다.
+아직 게임플레이와 자동화된 빌드·테스트 파이프라인은 준비되지 않았습니다. 현재 구현된 것은 클라이언트–서버 연결과 Ping/Pong RTT 측정뿐입니다. 기능을 추가할 때는 최소한 다음을 확인해야 합니다.
 
 1. Unity 컴파일 오류가 없는지 확인
 2. 관련 EditMode 또는 PlayMode 테스트 실행
@@ -87,7 +114,8 @@ Client/             Unity 클라이언트 프로젝트
   Assets/           Unity 게임 코드와 에셋
   Packages/         Unity 패키지 선언
   ProjectSettings/  Unity 프로젝트 설정
-Server/             게임 서버 프로젝트 — 서버 기술 결정 전까지 비어 있음
+Shared/             클라이언트·서버 공용 순수 C# 코드 (Unity 로컬 패키지)
+Server/             ASP.NET Core 게임 서버 (.NET 10)
 docs/               기획·기술·작업 문서
 AGENTS.md           코딩 에이전트 공통 지침
 CLAUDE.md           Claude Code 진입 지침

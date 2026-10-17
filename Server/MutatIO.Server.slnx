@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MutatIO.Server/MutatIO.Server.csproj" />
+    <Project Path="src/MutatIO.Shared/MutatIO.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MutatIO.Server.Tests/MutatIO.Server.Tests.csproj" />
+  </Folder>
+</Solution>

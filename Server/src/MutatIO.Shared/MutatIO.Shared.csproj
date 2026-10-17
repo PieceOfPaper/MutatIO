@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unity 패키지(/Shared)의 소스를 서버에서 빌드하기 위한 프로젝트입니다.
+    Unity와 같은 제약(netstandard2.1, C# 9)으로 컴파일하여 양쪽에서 동일하게 동작하도록 합니다.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>MutatIO.Shared</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../../Shared/Runtime/**/*.cs" LinkBase="Runtime" />
+  </ItemGroup>
+
+</Project>

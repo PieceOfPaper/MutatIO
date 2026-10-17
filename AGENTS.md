@@ -43,7 +43,10 @@
 ## 저장소 구성
 
 - `Client/`: Unity 클라이언트 프로젝트입니다. Unity 관련 경로는 모두 이 폴더를 기준으로 합니다.
-- `Server/`: 게임 서버 프로젝트 자리입니다. 서버 기술이 결정될 때까지 비워 두며, 승인 없이 서버 코드나 프레임워크를 추가하지 않습니다.
+- `Shared/`: 클라이언트와 서버가 함께 쓰는 순수 C# 코드입니다. Unity 로컬 패키지 `com.mutatio.shared`이며 서버는 `Server/src/MutatIO.Shared`로 같은 소스를 빌드합니다.
+  - netstandard2.1과 C# 9 범위만 사용합니다. `UnityEngine`, ASP.NET Core, 서버 전용 API를 참조하지 않습니다.
+  - 파일을 추가·이동하면 Unity가 생성한 `.meta`도 함께 커밋합니다.
+- `Server/`: ASP.NET Core(.NET 10) 게임 서버입니다. 승인 없이 새 네트워크 프레임워크나 직렬화 라이브러리를 추가하지 않습니다.
 
 ## Unity 작업 규칙
 
@@ -52,9 +55,10 @@
 - Unity YAML을 직접 수정한다면 GUID, fileID, 직렬화 구조를 이해한 경우에만 최소 범위로 수정합니다.
 - 에셋을 추가·이동·삭제할 때 대응하는 `.meta` 파일을 함께 관리합니다.
 - 런타임 코드와 에디터 전용 API를 분리합니다.
+- 네트워크 코드는 `IClientTransport` 뒤에 두고 플랫폼 분기는 `ClientTransportFactory`에서만 합니다. 백그라운드 스레드에서 Unity API를 호출하지 않습니다.
 - 입력은 Unity Input System으로 추상화하여 키보드·마우스와 가상 조이스틱이 같은 게임플레이 명령을 사용하게 합니다.
 - WebGL 제한을 고려하고 플랫폼 종속 API를 무심코 도입하지 않습니다.
-- 온라인 멀티플레이 기술은 미결정입니다. 승인 없이 특정 네트워크 프레임워크에 프로젝트를 결합하지 않습니다.
+- 서버는 ASP.NET Core와 WebSocket을 사용합니다(`docs/DECISIONS.md`). 승인 없이 Netcode for GameObjects 같은 다른 네트워크 프레임워크를 도입하지 않습니다.
 
 ## 권장 코드 구조
 
@@ -70,6 +74,7 @@ Client/Assets/MutatIO/
     Growth/
     Combat/
     Input/
+    Networking/     전송 계층(Transport/)과 NetworkClient — 구현됨
     UI/
   Editor/
   Tests/
@@ -94,6 +99,12 @@ unity command --project-path "$(pwd)/Client"
 unity command --project-path "$(pwd)/Client" editor_status
 unity command --project-path "$(pwd)/Client" console_status
 unity command --project-path "$(pwd)/Client" console --level error --tail 20
+```
+
+서버나 `Shared/`를 변경했다면 다음도 실행합니다.
+
+```bash
+dotnet test Server/MutatIO.Server.slnx
 ```
 
 사용 가능한 명령은 설치된 Unity CLI와 Pipeline 버전이 보고하는 목록을 기준으로 합니다. 실행하지 못한 검증은 완료한 것처럼 표현하지 않고 사유를 남깁니다.

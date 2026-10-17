@@ -49,3 +49,11 @@
 - 상태: 승인
 - 결정: 저장소 루트에 `Client/`(Unity 클라이언트 프로젝트)와 `Server/`(게임 서버 프로젝트) 폴더를 둡니다. 기존 Unity 프로젝트는 `Client/`로 옮기고, `Server/`는 서버 기술이 결정될 때까지 비워 둡니다.
 - 이유: IO 게임은 클라이언트만으로 동작하지 않고 별도 서버가 필요하므로, 두 프로젝트의 경계를 저장소 구조에서부터 분리하기 위함입니다. 서버 기술 선택 자체는 여전히 미결정입니다.
+
+## 2026-10-17 — 서버 기술 스택
+
+- 상태: 승인
+- 결정: 게임 서버는 ASP.NET Core(.NET 10 LTS)로 만들고, 클라이언트와는 WebSocket으로 통신합니다. 게임 규칙과 프로토콜 정의는 `Shared/`의 순수 C# 코드(netstandard2.1, C# 9)로 작성하여 Unity(로컬 UPM 패키지)와 서버(프로젝트 참조)가 함께 사용합니다.
+- 이유: Unity WebGL 클라이언트는 브라우저 제약으로 UDP를 쓸 수 없어 WebSocket이 사실상 유일한 전송 방식입니다. 서버를 C#으로 만들면 게임 규칙 코드를 클라이언트와 공유할 수 있고, 2D IO 게임 규모에서는 Unity 헤드리스 서버보다 가볍게 많은 인원을 처리할 수 있습니다.
+- 검토한 대안: Unity 헤드리스 서버 + Netcode for GameObjects·Mirror·FishNet(서버가 무겁고 프레임워크 결합이 큼), MagicOnion(브라우저에서 브리지가 필요하고 RPC 중심), SignalR(WebGL 클라이언트 지원이 애매함), Colyseus·Nakama(C# 코드 공유 불가).
+- 아직 정하지 않은 것: 직렬화 라이브러리(MemoryPack 또는 MessagePack-CSharp 후보), Unity WebGL용 WebSocket 클라이언트 구현, 서버 틱, 권위 범위, 방 구조, 호스팅.
