@@ -441,11 +441,14 @@ Client/Assets/MutatIO/Runtime/
 
 ### 클라이언트 배포
 
-- `.github/workflows/deploy-client.yml`이 GameCI `unity-builder`로 WebGL을 빌드하고 `actions/deploy-pages`로 GitHub Pages에 올립니다. `Client/Library`는 Actions 캐시로 재사용합니다.
-- 빌드 진입점은 `Client/Assets/MutatIO/Editor/WebGLPagesBuild.cs`의 `BuildForPages`입니다. 에디터 메뉴 `MutatIO > Build > WebGL (GitHub Pages)`로 같은 빌드를 로컬(`Client/Builds/WebGL`)에서 만들 수 있습니다.
+실행 절차는 [배포 가이드](DEPLOYMENT.md)에 있습니다.
+
+- 로컬 Unity에서 WebGL을 빌드하고 `scripts/deploy-client-pages.sh`가 결과를 `gh-pages` 브랜치에 단일 커밋으로 강제 푸시합니다. GitHub Pages는 `gh-pages` 브랜치 루트를 서비스합니다.
+- 빌드는 `Client/Assets/MutatIO/Editor/WebGLPagesBuild.cs`가 담당합니다. 에디터 메뉴 `MutatIO > Build > WebGL (GitHub Pages)` 또는 batchmode `-executeMethod MutatIO.Editor.WebGLPagesBuild.BuildForPages`로 실행하며 출력은 `Client/Builds/WebGL`입니다.
+- GitHub Actions 빌드는 CI에서 Unity 계정 로그인(2단계 인증)이 막혀 보류했습니다(`DECISIONS.md` 2026-10-18).
 - 빌드 씬은 `Assets/MutatIO/Scenes/Prototype.unity`뿐이며 `EditorBuildSettings`의 씬 목록은 사용하지 않습니다.
 - GitHub Pages는 `Content-Encoding` 헤더를 지정할 수 없으므로 빌드하는 동안만 Gzip 압축과 Decompression Fallback을 켜고 끝나면 원래 설정으로 되돌립니다.
-- 서버 배포는 별도 워크플로로 추가할 예정입니다. 온라인 플레이를 배포하면 Pages(HTTPS)에서 접속하므로 서버는 `wss://`가 필요합니다.
+- 서버 배포 방식은 아직 정하지 않았습니다. 온라인 플레이를 배포하면 Pages(HTTPS)에서 접속하므로 서버는 `wss://`가 필요합니다.
 
 ## Unity CLI와 Pipeline
 
@@ -468,7 +471,7 @@ unity command --project-path "$(pwd)/Client" console --level error --tail 20
 - 서버 틱, 권위 범위, 방(인스턴스) 구조
 - 계정 및 데이터베이스
 - 서버 호스팅
-- CI/CD — 클라이언트 GitHub Pages 배포만 구성, 서버 배포·테스트 CI 미정
+- CI/CD — 클라이언트는 로컬 빌드 후 스크립트로 GitHub Pages 배포, 서버 배포·테스트 CI 미정
 - 분석과 크래시 리포팅
 
 선택이 필요한 시점에는 후보를 비교하고 `docs/DECISIONS.md`에 근거와 함께 기록합니다.

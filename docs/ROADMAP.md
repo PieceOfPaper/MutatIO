@@ -94,7 +94,7 @@ Phase 1의 재미와 온라인 요구사항을 확인한 뒤 진행합니다.
 
 ## Phase 4 — WebGL 플레이어블
 
-- WebGL 빌드 자동화 — GitHub Actions → GitHub Pages 워크플로 작성(`Prototype` 씬). CI 실행 결과 미확인
+- WebGL 빌드 자동화 — 로컬 빌드 메뉴와 gh-pages 배포 스크립트 작성(`Prototype` 씬). CI 빌드는 Unity 계정 2단계 인증 문제로 보류
 - 브라우저 입력과 해상도 대응
 - 로딩과 메모리 최적화
 - 모바일 브라우저 지원 범위 검증

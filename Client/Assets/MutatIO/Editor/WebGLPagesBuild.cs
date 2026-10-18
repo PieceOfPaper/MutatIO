@@ -7,7 +7,8 @@ using UnityEngine;
 namespace MutatIO.Editor
 {
     /// <summary>
-    /// GitHub Pages 배포용 WebGL 빌드. CI(GameCI)는 -executeMethod로 BuildForPages를 호출합니다.
+    /// GitHub Pages 배포용 WebGL 빌드. 에디터 메뉴 또는 batchmode의 -executeMethod BuildForPages로 실행하고,
+    /// 결과는 scripts/deploy-client-pages.sh로 gh-pages 브랜치에 올립니다.
     /// GitHub Pages는 Content-Encoding 헤더를 지정할 수 없으므로 Gzip + Decompression Fallback으로 빌드하고,
     /// 빌드가 끝나면 프로젝트의 압축 설정을 원래대로 되돌립니다.
     /// </summary>
@@ -26,7 +27,7 @@ namespace MutatIO.Editor
                 EditorUtility.RevealInFinder(Path.GetFullPath(DefaultOutputPath));
         }
 
-        // GameCI 진입점. 실패 시 0이 아닌 종료 코드로 끝냅니다.
+        // batchmode 진입점(-customBuildPath로 출력 경로 지정 가능). 실패 시 0이 아닌 종료 코드로 끝냅니다.
         public static void BuildForPages()
         {
             var outputPath = GetArgument("-customBuildPath") ?? DefaultOutputPath;
@@ -61,6 +62,8 @@ namespace MutatIO.Editor
             {
                 PlayerSettings.WebGL.compressionFormat = previousCompression;
                 PlayerSettings.WebGL.decompressionFallback = previousFallback;
+                // 빌드 중 Unity가 임시 설정을 ProjectSettings.asset에 저장하므로 복원한 값을 다시 저장합니다.
+                AssetDatabase.SaveAssets();
             }
         }
 

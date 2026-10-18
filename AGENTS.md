@@ -122,6 +122,7 @@ dotnet test Server/MutatIO.Server.slnx
 - 레퍼런스의 검증 결과와 미확인 조건: `docs/INPUT_REFERENCE.md`
 - 기술 스택·아키텍처·플랫폼 변경: `docs/TECHNICAL_DIRECTION.md`
 - 설치·실행·검증 방법 변경: `README.md`
+- 빌드·배포 절차 변경: `docs/DEPLOYMENT.md`
 - 개발 단계 변경: `docs/ROADMAP.md`
 
 문서는 코드의 현재 동작을 과장하지 않아야 합니다. 계획은 구현 완료와 명확히 구분합니다.

@@ -260,3 +260,12 @@
 - 결정: 현재 배포 씬은 서버 없이 플레이 가능한 `Prototype.unity` 하나입니다. GitHub Pages는 `Content-Encoding` 헤더를 지정할 수 없으므로 빌드하는 동안만 Gzip + Decompression Fallback을 적용합니다(프로젝트 설정은 바꾸지 않음).
 - 결정: 서버 배포는 이후 별도 워크플로로 추가합니다. 서버 호스팅 대상은 아직 정하지 않았습니다.
 - 근거: 2026-10-18 사용자 지시.
+
+## 2026-10-18 — 클라이언트 배포를 로컬 빌드 + gh-pages 브랜치로 변경
+
+- 상태: 승인 — 같은 날의 "클라이언트 GitHub Pages 배포" 결정 중 GitHub Actions 빌드 부분을 번복합니다.
+- 결정: GitHub Actions 배포 워크플로를 제거합니다. WebGL은 로컬 Unity에서 빌드하고 `scripts/deploy-client-pages.sh`로 `gh-pages` 브랜치에 올려 GitHub Pages(브랜치 배포)로 서비스합니다.
+- 결정: `gh-pages`는 매번 빌드 결과만 담은 단일 커밋으로 강제 푸시합니다. 빌드 바이너리가 저장소 이력에 쌓이지 않게 하기 위함입니다.
+- 유지: 배포 씬은 `Prototype.unity`이고, 빌드 중에만 Gzip + Decompression Fallback을 적용합니다.
+- 이유: CI에서 Unity Personal 라이선스를 활성화하려면 계정 로그인이 필요한데, 계정의 2단계 인증 때문에 CI 로그인이 실패했습니다(HTTP 401).
+- 근거: 2026-10-18 사용자 지시.
