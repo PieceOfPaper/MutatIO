@@ -83,8 +83,8 @@ namespace MutatIO.Shared.World
         }
 
         /// <summary>
-        /// dt만큼 진행합니다. 순서: 이동·경계 → 초식 밀침·육식의 초식 먹이 밀기 → 먹이 흡수·섭취(점수·몸집·포만·변이 갱신, 변이 전환)
-        /// → 갱신된 상태로 접촉 처치 판정 → 포만·변이 감소와 굶주림 판정 → 사망 일괄 반영(초식은 고기를 남김).
+        /// dt만큼 진행합니다. 순서: 이동·경계 → 비처치 쌍 밀침·육식의 초식 먹이 밀기 → 먹이 흡수·섭취(점수·몸집·포만·변이 갱신, 변이 전환)
+        /// → 갱신된 상태로 접촉 처치 판정 → 포만·변이 감소와 굶주림 판정 → 사망 일괄 반영(초식·육식 모두 고기를 남김).
         /// 섭취·성장·변이를 접촉보다 먼저 처리하는 것은 확정 규칙입니다.
         /// 임시: 처치와 굶주림을 같은 스텝에 일괄 반영하는 것, 처치당한 개체는 포만 감소를 건너뛰는 것은 미결정 순서의 임시안입니다.
         /// </summary>
@@ -97,13 +97,13 @@ namespace MutatIO.Shared.World
 
             foreach (var creature in creatures)
             {
-                MovementSystem.Step(ref creature.Movement, creature.Command, creature.Size, Settings.movement, deltaTime);
+                MovementSystem.Step(ref creature.Movement, creature.Command, Settings.movement, deltaTime);
                 Bounds.ClampCircle(ref creature.Movement, creature.Radius);
                 // 대시 입력은 누른 순간 한 번만 적용합니다. 같은 명령으로 여러 스텝을 진행해도 반복하지 않습니다.
                 creature.Command = new PlayerCommand(creature.Command.Move, false);
             }
 
-            ContactSystem.SeparateHerbivores(creatures, Bounds, Settings.contact, deltaTime);
+            ContactSystem.SeparateNonLethal(creatures, Bounds, Settings.contact, deltaTime);
             Food.PushPlants(creatures, Settings.contact.plantPushMargin);
 
             consumedThisStep.Clear();
@@ -142,16 +142,14 @@ namespace MutatIO.Shared.World
                 var dead = death.Creature;
                 creatures.Remove(dead);
                 dead.MarkDead();
-                if (dead.Role == CreatureRole.Herbivore)
-                {
-                    Food.DropMeat(dead.Movement.Position, dead.Radius, GetMeatDropCount(dead.Intake, Settings.food));
-                }
+                // 초식·육식 모두 사망 시 고기를 남깁니다.
+                Food.DropMeat(dead.Movement.Position, dead.Radius, GetMeatDropCount(dead.Intake, Settings.food));
 
                 CreatureDied?.Invoke(death);
             }
         }
 
-        /// <summary>(DROP-01) 초식 사망 시 남기는 고기 개수. 임시: 반올림 변환은 임시안입니다.</summary>
+        /// <summary>(DROP-01) 사망 시(초식·육식) 남기는 고기 개수. 임시: 반올림 변환은 임시안입니다.</summary>
         public static int GetMeatDropCount(int intake, FoodSettings settings)
         {
             return (int)Math.Round(Math.Max(0, intake) * Math.Max(0f, settings.meatDropRatio), MidpointRounding.AwayFromZero);

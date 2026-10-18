@@ -54,6 +54,7 @@ namespace MutatIO.World
             Simulation = new WorldSimulation(settings, seed);
             Simulation.CreatureDied += OnCreatureDied;
             Simulation.Food.FillPlants();
+            Simulation.Food.FillFieldMeat();
 
             Bots = new BotDirector(Simulation, botSettings, seed + 1);
             Bots.ConnectedHumans = localHumans;

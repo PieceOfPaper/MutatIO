@@ -13,29 +13,27 @@ namespace MutatIO.Shared.Combat
     public static class ContactSystem
     {
         /// <summary>
-        /// 겹친 초식끼리 서로 밀어 겹침을 줄입니다. 몸집이 큰 쪽이 덜 밀립니다(면적 비율).
-        /// 임시: 육식이 포함된 비처치 접촉의 밀침·통과는 미결정이며 현재는 통과합니다.
+        /// 서로 처치할 수 없는 두 생명체(초식끼리, 동점, 작은 육식과 큰 초식 등)가 겹치면 서로 밀어 겹침을 줄입니다.
+        /// 몸이 큰(무거운) 쪽이 덜 밀립니다. 무게 = 반경^<see cref="ContactSettings.separationMassExponent"/>.
+        /// 한쪽이 다른 쪽을 처치할 수 있는 쌍은 밀지 않고 접촉 처치로 넘깁니다.
+        /// 임시: 육식이 포함된 비처치 접촉도 밀침으로 처리하는 것은 프로토타입 임시안입니다.
         /// </summary>
-        public static void SeparateHerbivores(IReadOnlyList<Creature> creatures, WorldBounds bounds, ContactSettings settings, float deltaTime)
+        public static void SeparateNonLethal(IReadOnlyList<Creature> creatures, WorldBounds bounds, ContactSettings settings, float deltaTime)
         {
-            var response = Math.Min(1f, Math.Max(0f, settings.herbivoreSeparationRate) * deltaTime);
+            var response = Math.Min(1f, Math.Max(0f, settings.separationRate) * deltaTime);
             if (response <= 0f)
             {
                 return;
             }
 
+            var exponent = Math.Max(0f, settings.separationMassExponent);
             for (var i = 0; i < creatures.Count; i++)
             {
                 var a = creatures[i];
-                if (a.Role != CreatureRole.Herbivore)
-                {
-                    continue;
-                }
-
                 for (var j = i + 1; j < creatures.Count; j++)
                 {
                     var b = creatures[j];
-                    if (b.Role != CreatureRole.Herbivore)
+                    if (EcologyRules.CanKill(a, b) || EcologyRules.CanKill(b, a))
                     {
                         continue;
                     }
@@ -50,11 +48,11 @@ namespace MutatIO.Shared.Combat
 
                     // 중심이 완전히 겹치면 ID 순서로 정한 고정 방향으로 떼어 놓습니다.
                     var direction = distance > 0.0001f ? offset / distance : Vector2.UnitX;
-                    var areaA = a.Radius * a.Radius;
-                    var areaB = b.Radius * b.Radius;
+                    var massA = (float)Math.Pow(Math.Max(0.0001f, a.Radius), exponent);
+                    var massB = (float)Math.Pow(Math.Max(0.0001f, b.Radius), exponent);
                     var correction = overlap * response;
-                    a.Movement.Position -= direction * (correction * areaB / (areaA + areaB));
-                    b.Movement.Position += direction * (correction * areaA / (areaA + areaB));
+                    a.Movement.Position -= direction * (correction * massB / (massA + massB));
+                    b.Movement.Position += direction * (correction * massA / (massA + massB));
                     bounds.ClampCircle(ref a.Movement, a.Radius);
                     bounds.ClampCircle(ref b.Movement, b.Radius);
                 }

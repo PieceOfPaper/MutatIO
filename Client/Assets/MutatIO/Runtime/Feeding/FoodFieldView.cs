@@ -23,6 +23,12 @@ namespace MutatIO.Feeding
         [SerializeField] private Color meatColor = new Color32(0xFF, 0x6B, 0x6B, 0xFF);
         [SerializeField] private Sprite sprite;
 
+        [Tooltip("썩는 먹이(고기)가 사라지기 전 흐려지기 시작하는 남은 시간. 초. 표시 전용 임시값입니다.")]
+        [SerializeField, Min(0f)] private float decayFadeDuration = 5f;
+
+        [Tooltip("사라지기 직전의 불투명도. 표시 전용 임시값입니다.")]
+        [SerializeField, Range(0f, 1f)] private float decayMinAlpha = 0.25f;
+
         private readonly List<FoodItem> visible = new List<FoodItem>();
         private readonly List<SpriteRenderer> renderers = new List<SpriteRenderer>();
         private WorldSimulation simulation;
@@ -64,7 +70,7 @@ namespace MutatIO.Feeding
                     renderer.gameObject.SetActive(true);
                 }
 
-                renderer.color = food.Kind == FoodKind.Meat ? meatColor : plantColor;
+                renderer.color = GetColor(food);
                 renderer.transform.localPosition = new Vector3(food.Position.X, food.Position.Y, 0f);
             }
 
@@ -74,6 +80,17 @@ namespace MutatIO.Feeding
             }
 
             activeCount = visible.Count;
+        }
+
+        private Color GetColor(FoodItem food)
+        {
+            var color = food.Kind == FoodKind.Meat ? meatColor : plantColor;
+            if (food.Decays && decayFadeDuration > 0f && food.TimeLeft < decayFadeDuration)
+            {
+                color.a *= Mathf.Lerp(decayMinAlpha, 1f, food.TimeLeft / decayFadeDuration);
+            }
+
+            return color;
         }
 
         private SpriteRenderer CreateRenderer()

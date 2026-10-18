@@ -15,14 +15,14 @@ namespace MutatIO.Shared.Hunger
         /// <summary>(HUNGER-01) 입장 시 포만량. 게이지 단위.</summary>
         public float startSatiety = 100f;
 
-        /// <summary>(HUNGER-02) 초당 포만 감소량. 게이지 단위/초. 몸집·역할과 무관하게 모든 생명체가 같은 값을 씁니다.</summary>
-        public float decayPerSecond = 2f;
+        /// <summary>(HUNGER-02) 초당 포만 감소량. 게이지 단위/초. 몸집·역할과 무관하게 모든 생명체가 같은 값을 씁니다. 2026-10-18에 2에서 1.5배로 올렸습니다.</summary>
+        public float decayPerSecond = 3f;
 
         /// <summary>(FOOD-05) 초식 먹이 하나의 기본 포만 회복량(초기 몸집 기준). 게이지 단위.</summary>
         public float plantSatiety = 4f;
 
-        /// <summary>(FOOD-05) 육식 먹이(고기) 하나의 기본 포만 회복량(초기 몸집, 육식 기준). 게이지 단위.</summary>
-        public float meatSatiety = 8f;
+        /// <summary>(FOOD-05) 육식 먹이(고기) 하나의 기본 포만 회복량(초기 몸집, 육식 기준). 게이지 단위. 2026-10-18에 8에서 4배로 올렸습니다.</summary>
+        public float meatSatiety = 32f;
 
         /// <summary>(FOOD-06) 초식 상태에서 고기를 먹을 때의 포만 회복 효율. 배율. 초기 아이디어 0.5.</summary>
         public float herbivoreMeatEfficiency = 0.5f;

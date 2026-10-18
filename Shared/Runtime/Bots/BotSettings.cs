@@ -9,8 +9,8 @@ namespace MutatIO.Shared.Bots
     [Serializable]
     public sealed class BotSettings
     {
-        /// <summary>(BOT-01) 월드에 유지할 최소 인원. 접속한 사람 수 + 봇 수가 이 값보다 적으면 봇을 입장시킵니다. 프로토타입 5명.</summary>
-        public int minPopulation = 5;
+        /// <summary>(BOT-01) 월드에 유지할 최소 인원. 접속한 사람 수 + 봇 수가 이 값보다 적으면 봇을 입장시킵니다. 프로토타입 29명(나 + 봇 28).</summary>
+        public int minPopulation = 29;
 
         /// <summary>(BOT-02) 빈자리가 생긴 뒤 봇이 입장하기까지의 최소 지연. 초.</summary>
         public float joinDelayMin = 3f;
@@ -20,9 +20,23 @@ namespace MutatIO.Shared.Bots
 
         /// <summary>
         /// (BOT-05) 봇이 입장하는 맵 중앙 정사각 영역의 절반 크기. 월드 단위. 0 이하이면 맵 전체입니다.
-        /// 임시: 스폰 위치 규칙(SPAWN-01)은 미결정입니다. 1000×1000 맵에서 5명이 서로 만나 보도록 중앙 근처에 입장시킵니다.
+        /// 임시: 스폰 위치 규칙(SPAWN-01)은 미결정입니다. 프로토타입 맵(200×200)이 작아 맵 전체에 입장시킵니다.
         /// </summary>
-        public float spawnAreaHalfExtent = 40f;
+        public float spawnAreaHalfExtent = 0f;
+
+        /// <summary>
+        /// (BOT-06) 육식 지향 봇 수. 이 봇들은 초식일 때 사냥 거리(<see cref="BotSkillProfile.huntRange"/>) 안의 고기를 풀보다 먼저 노려 육식 변이를 노립니다.
+        /// 입장할 때 살아 있는 육식 지향 봇이 이 수보다 적으면 새 봇에게 성향을 줍니다. 0이면 없습니다.
+        /// 임시: 월드가 평화로워지지 않도록 육식을 공급하는 프로토타입용 장치입니다.
+        /// </summary>
+        public int meatSeekerCount = 3;
+
+        /// <summary>
+        /// (BOT-07) 육식 봇이 따라다닐 "많이 굶주린 생명체(초식·육식)"의 기준. 포만 ÷ 최대 포만이 이 값 이하이면 처치할 수 없는 상대라도
+        /// 사냥 거리 안에서 따라다니다가, 굶어 죽어 떨어지는 고기를 먹습니다. 0이면 따라가지 않습니다.
+        /// 임시: 프로토타입용 봇 행동입니다.
+        /// </summary>
+        public float stalkSatietyRatio = 0.25f;
 
         /// <summary>
         /// (BOT-03) 봇 수준. 0(먹이를 거의 찾지 않고 위험도 못 보는 수준) ~ 1(가장 영리한 수준).
@@ -52,6 +66,12 @@ namespace MutatIO.Shared.Bots
         /// <summary>몸 가장자리에서 먹이·다른 생명체를 알아차리는 거리. 월드 단위.</summary>
         public float perceptionRange;
 
+        /// <summary>
+        /// 육식일 때 몸 가장자리에서 사냥감(처치할 수 있는 개체)을 찾는 거리. 월드 단위.
+        /// 먹이·위험 인지 거리보다 넓게 두어 화면에 보이는 정도의 초식을 노리게 합니다. 쫓던 사냥감은 이 거리를 벗어날 때까지 계속 쫓습니다.
+        /// </summary>
+        public float huntRange;
+
         /// <summary>판단할 때 범위 안의 위험(나를 처치할 수 있는 육식)을 알아차릴 확률. 0~1.</summary>
         public float threatAwareness;
 
@@ -61,8 +81,11 @@ namespace MutatIO.Shared.Bots
         /// <summary>목표 방향의 최대 오차. 도.</summary>
         public float aimErrorDegrees;
 
-        /// <summary>이동 입력의 세기. 0~1. 낮으면 느리게 움직여 지나가며 흡수하는 먹이도 줄어듭니다.</summary>
-        public float pace;
+        /// <summary>
+        /// 판단할 때 다음 판단까지 멈춰 서 있을 확률. 0~1. 위험 회피·추격 중에는 멈추지 않습니다.
+        /// 이동 속도는 모두 같으므로, 수준이 낮은 봇이 먹이를 덜 먹어 자연스럽게 굶게 하는 역할입니다.
+        /// </summary>
+        public float idleChance;
 
         /// <summary>도주·추격 중 대시 조건을 만족했을 때 실제로 대시할 확률. 0~1.</summary>
         public float dashChance;
@@ -73,10 +96,11 @@ namespace MutatIO.Shared.Bots
             {
                 decisionInterval = 1.2f,
                 perceptionRange = 3f,
+                huntRange = 4f,
                 threatAwareness = 0f,
                 focus = 0.05f,
                 aimErrorDegrees = 60f,
-                pace = 0.15f,
+                idleChance = 0.6f,
                 dashChance = 0f,
             };
         }
@@ -87,10 +111,11 @@ namespace MutatIO.Shared.Bots
             {
                 decisionInterval = 0.15f,
                 perceptionRange = 14f,
+                huntRange = 24f,
                 threatAwareness = 1f,
                 focus = 1f,
                 aimErrorDegrees = 3f,
-                pace = 1f,
+                idleChance = 0f,
                 dashChance = 0.9f,
             };
         }

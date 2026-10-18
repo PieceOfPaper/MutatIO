@@ -33,6 +33,9 @@ namespace MutatIO.Shared.Feeding
     /// </remarks>
     public sealed class FoodField
     {
+        private const int MeatSpawnAttempts = 8;
+        private const float MinMeatSpawnInterval = 0.001f;
+
         private readonly FoodSettings settings;
         private readonly WorldBounds bounds;
         private readonly Random random;
@@ -45,6 +48,7 @@ namespace MutatIO.Shared.Feeding
         private readonly float[] regenTimers;
         private readonly int[] occupiedStamps;
         private int occupiedStamp;
+        private float meatSpawnTimer;
         private int nextId = 1;
         private int plantCount;
 
@@ -61,6 +65,7 @@ namespace MutatIO.Shared.Feeding
             ownedCounts = new int[TileCount];
             regenTimers = new float[TileCount];
             occupiedStamps = new int[TileCount];
+            meatSpawnTimer = NextMeatSpawnInterval();
         }
 
         public event Action<FoodItem> Spawned;
@@ -117,16 +122,48 @@ namespace MutatIO.Shared.Feeding
             }
         }
 
+        /// <summary>
+        /// 필드 고기(FOOD-08)를 정상 상태 개수(유지시간 ÷ 평균 생성 간격)만큼 맵 전체에 미리 깝니다.
+        /// 남은 시간을 0~유지시간 사이로 나누어 한꺼번에 썩지 않게 합니다. 필드 생성이 꺼져 있거나 고기가 썩지 않으면 아무것도 하지 않습니다.
+        /// 월드 시작 시 생명체가 없을 때 호출하므로 점유 차단을 검사하지 않습니다.
+        /// </summary>
+        public void FillFieldMeat()
+        {
+            var count = GetFieldMeatSteadyCount(settings);
+            for (var i = 0; i < count; i++)
+            {
+                var meat = Spawn(FoodKind.Meat, RandomPositionInBounds());
+                meat.TimeLeft = Math.Max(MinMeatSpawnInterval, (float)random.NextDouble() * meat.Lifetime);
+            }
+        }
+
+        /// <summary>필드 고기가 먹히지 않을 때 유지되는 평균 개수입니다. 유지시간 ÷ 평균 생성 간격(반올림).</summary>
+        public static int GetFieldMeatSteadyCount(FoodSettings settings)
+        {
+            var min = Math.Max(0f, settings.meatSpawnIntervalMin);
+            var max = Math.Max(min, settings.meatSpawnIntervalMax);
+            var average = (min + max) * 0.5f;
+            if (settings.meatSpawnIntervalMax <= 0f || settings.meatLifetime <= 0f || average <= 0f)
+            {
+                return 0;
+            }
+
+            return (int)Math.Round(settings.meatLifetime / average);
+        }
+
         /// <summary>먹이가 아직 필드에 남아 있는지입니다. 섭취·제거된 먹이는 false입니다.</summary>
         public bool Contains(FoodItem food)
         {
             return food != null && food.ListIndex < items.Count && items[food.ListIndex] == food;
         }
 
-        /// <summary>타일 리젠과 무관한 먹이를 직접 생성합니다. 어느 타일의 상한에도 포함하지 않습니다.</summary>
+        /// <summary>
+        /// 타일 리젠과 무관한 먹이를 직접 생성합니다. 어느 타일의 상한에도 포함하지 않습니다.
+        /// 고기는 <see cref="FoodSettings.meatLifetime"/>이 지나면 썩어서 사라집니다.
+        /// </summary>
         public FoodItem Spawn(FoodKind kind, Vector2 position)
         {
-            return Add(new FoodItem(nextId++, kind, position, FoodItem.NoTile));
+            return Add(new FoodItem(nextId++, kind, position, FoodItem.NoTile, GetLifetime(kind)));
         }
 
         /// <summary>
@@ -256,7 +293,9 @@ namespace MutatIO.Shared.Feeding
 
             MarkOccupiedTiles(creatures);
             UpdateRegen(deltaTime);
+            UpdateMeatSpawn(deltaTime);
             ReleaseOrphans();
+            UpdateDecay(deltaTime);
             AssignAttractors(creatures);
             PullAndConsume(deltaTime, consumed);
         }
@@ -327,6 +366,59 @@ namespace MutatIO.Shared.Feeding
             }
         }
 
+        /// <summary>
+        /// 가끔 필드에 고기를 1개 만듭니다. 생명체가 덮은 타일은 피하며, 후보가 모두 덮여 있으면 다음 스텝에 다시 시도합니다.
+        /// 임시: 생성 간격·개수·위치 규칙은 프로토타입용 임시안입니다.
+        /// </summary>
+        private void UpdateMeatSpawn(float deltaTime)
+        {
+            if (settings.meatSpawnIntervalMax <= 0f)
+            {
+                return;
+            }
+
+            meatSpawnTimer -= deltaTime;
+            // 간격이 스텝보다 짧으면 한 스텝에 여러 개를 만듭니다.
+            while (meatSpawnTimer <= 0f)
+            {
+                if (!TrySpawnFieldMeat())
+                {
+                    return;
+                }
+
+                meatSpawnTimer += Math.Max(MinMeatSpawnInterval, NextMeatSpawnInterval());
+            }
+        }
+
+        private bool TrySpawnFieldMeat()
+        {
+            for (var attempt = 0; attempt < MeatSpawnAttempts; attempt++)
+            {
+                var position = RandomPositionInBounds();
+                if (occupiedStamps[GetTileIndex(position)] != occupiedStamp)
+                {
+                    Spawn(FoodKind.Meat, position);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Vector2 RandomPositionInBounds()
+        {
+            return new Vector2(
+                ((float)random.NextDouble() * 2f - 1f) * bounds.HalfWidth,
+                ((float)random.NextDouble() * 2f - 1f) * bounds.HalfHeight);
+        }
+
+        private float NextMeatSpawnInterval()
+        {
+            var min = Math.Max(0f, settings.meatSpawnIntervalMin);
+            var max = Math.Max(min, settings.meatSpawnIntervalMax);
+            return min + (float)random.NextDouble() * (max - min);
+        }
+
         /// <summary>흡수 대상이 월드에서 사라졌으면(사망·이탈) 현재 위치에 남기고 선점을 해제합니다.</summary>
         private void ReleaseOrphans()
         {
@@ -337,6 +429,29 @@ namespace MutatIO.Shared.Feeding
                 {
                     food.AttractorId = FoodItem.NoAttractor;
                     RemoveAttractedAt(i);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 유지시간이 있는 먹이(고기)의 남은 시간을 줄이고, 다 된 먹이를 제거합니다. 보상은 없습니다.
+        /// 흡수 중인 먹이는 시간이 다 되어도 남겨 두어 섭취를 마치게 하고, 선점이 해제되면 다음 스텝에 사라집니다.
+        /// </summary>
+        private void UpdateDecay(float deltaTime)
+        {
+            // 뒤에서부터 돌면 제거 시 끝에서 옮겨 오는 먹이는 이미 처리한 먹이입니다.
+            for (var i = items.Count - 1; i >= 0; i--)
+            {
+                var food = items[i];
+                if (!food.Decays)
+                {
+                    continue;
+                }
+
+                food.TimeLeft = Math.Max(0f, food.TimeLeft - deltaTime);
+                if (food.TimeLeft <= 0f && food.AttractorId == FoodItem.NoAttractor)
+                {
+                    Remove(food);
                 }
             }
         }
@@ -408,7 +523,7 @@ namespace MutatIO.Shared.Feeding
                 min.X + (float)random.NextDouble() * (max.X - min.X),
                 min.Y + (float)random.NextDouble() * (max.Y - min.Y));
             ownedCounts[tile]++;
-            Add(new FoodItem(nextId++, FoodKind.Plant, position, tile));
+            Add(new FoodItem(nextId++, FoodKind.Plant, position, tile, GetLifetime(FoodKind.Plant)));
         }
 
         private FoodItem Add(FoodItem food)
@@ -477,6 +592,11 @@ namespace MutatIO.Shared.Feeding
             maxColumn = Clamp((int)Math.Floor((max.X + bounds.HalfWidth) / TileSize), 0, Columns - 1);
             minRow = Clamp((int)Math.Floor((min.Y + bounds.HalfHeight) / TileSize), 0, Rows - 1);
             maxRow = Clamp((int)Math.Floor((max.Y + bounds.HalfHeight) / TileSize), 0, Rows - 1);
+        }
+
+        private float GetLifetime(FoodKind kind)
+        {
+            return kind == FoodKind.Meat && settings.meatLifetime > 0f ? settings.meatLifetime : float.PositiveInfinity;
         }
 
         private float GetMagnetRadius(Creature creature)

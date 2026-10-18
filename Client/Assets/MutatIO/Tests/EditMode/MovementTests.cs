@@ -20,17 +20,17 @@ namespace MutatIO.Tests.EditMode
             var state = MovementState.At(System.Numerics.Vector2.Zero);
             var right = new PlayerCommand(System.Numerics.Vector2.UnitX, false);
 
-            MovementSystem.Step(ref state, right, 1f, settings, Dt);
+            MovementSystem.Step(ref state, right, settings, Dt);
             Assert.That(state.Velocity.X, Is.GreaterThan(0f).And.LessThan(settings.baseSpeed));
 
             for (var i = 0; i < 60; i++)
             {
-                MovementSystem.Step(ref state, right, 1f, settings, Dt);
+                MovementSystem.Step(ref state, right, settings, Dt);
             }
 
             Assert.That(state.Velocity.X, Is.EqualTo(settings.baseSpeed).Within(1e-3f));
 
-            var started = MovementSystem.Step(ref state, new PlayerCommand(System.Numerics.Vector2.UnitY, true), 1f, settings, Dt);
+            var started = MovementSystem.Step(ref state, new PlayerCommand(System.Numerics.Vector2.UnitY, true), settings, Dt);
             Assert.That(started, Is.True);
             Assert.That(state.DashDirection, Is.EqualTo(System.Numerics.Vector2.UnitY));
         }
@@ -41,7 +41,7 @@ namespace MutatIO.Tests.EditMode
             var settings = MovementSettings.CreateTemporaryDefaults();
             var state = MovementState.At(System.Numerics.Vector2.Zero);
 
-            var started = MovementSystem.Step(ref state, new PlayerCommand(System.Numerics.Vector2.Zero, true), 1f, settings, Dt);
+            var started = MovementSystem.Step(ref state, new PlayerCommand(System.Numerics.Vector2.Zero, true), settings, Dt);
 
             Assert.That(started, Is.False);
             Assert.That(state.DashCooldownRemaining, Is.EqualTo(0f));

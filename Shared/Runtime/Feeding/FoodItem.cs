@@ -7,7 +7,7 @@ namespace MutatIO.Shared.Feeding
         /// <summary>초식 먹이. 초록색, 타일별로 리젠합니다.</summary>
         Plant = 1,
 
-        /// <summary>육식 먹이. 붉은색, 초식 생명체 사망 시에만 생성합니다. 타일 리젠·상한과 무관합니다.</summary>
+        /// <summary>육식 먹이. 붉은색, 초식 생명체 사망 시와 가끔 필드에 저절로 생성합니다. 타일 리젠·상한과 무관하며 시간이 지나면 썩습니다.</summary>
         Meat = 2,
     }
 
@@ -20,12 +20,14 @@ namespace MutatIO.Shared.Feeding
         public const int NoAttractor = 0;
         public const int NoTile = -1;
 
-        internal FoodItem(int id, FoodKind kind, Vector2 position, int originTile)
+        internal FoodItem(int id, FoodKind kind, Vector2 position, int originTile, float lifetime)
         {
             Id = id;
             Kind = kind;
             Position = position;
             OriginTile = originTile;
+            Lifetime = lifetime;
+            TimeLeft = lifetime;
         }
 
         public int Id { get; }
@@ -39,6 +41,14 @@ namespace MutatIO.Shared.Feeding
         /// 타일 리젠이 아닌 먹이(직접 생성·육식 먹이)는 <see cref="NoTile"/>입니다.
         /// </summary>
         public int OriginTile { get; }
+
+        /// <summary>생성 시 정한 유지시간. 초. 썩지 않는 먹이(초식 먹이 등)는 <see cref="float.PositiveInfinity"/>입니다.</summary>
+        public float Lifetime { get; }
+
+        /// <summary>썩어서 사라지기까지 남은 시간. 초. 썩지 않는 먹이는 <see cref="float.PositiveInfinity"/>입니다.</summary>
+        public float TimeLeft { get; internal set; }
+
+        public bool Decays => !float.IsPositiveInfinity(Lifetime);
 
         /// <summary>이 먹이를 끌어당기고 있는 생명체 ID. 없으면 <see cref="NoAttractor"/>입니다.</summary>
         public int AttractorId { get; internal set; }

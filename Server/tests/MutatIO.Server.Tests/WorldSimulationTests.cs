@@ -310,15 +310,19 @@ public sealed class WorldSimulationTests
     }
 
     [Fact]
-    public void Growth_SlowsMovement()
+    public void Growth_DoesNotSlowMovement()
     {
         var world = CreateWorld(maxPlantsPerTile: 0);
         var creature = world.SpawnCreature(Vector2.Zero);
-        var smallSpeed = MovementSystem.GetMaxSpeed(creature.Size, world.Settings.movement);
-
         creature.AddIntake(200, world.Settings.growth);
+        creature.Command = new PlayerCommand(Vector2.UnitX, false);
 
-        Assert.True(MovementSystem.GetMaxSpeed(creature.Size, world.Settings.movement) < smallSpeed);
+        for (var i = 0; i < 60; i++)
+        {
+            world.Step(Dt);
+        }
+
+        Assert.Equal(world.Settings.movement.baseSpeed, creature.Movement.Velocity.Length(), 3);
     }
 
     [Fact]
@@ -453,6 +457,8 @@ public sealed class WorldSimulationTests
         var settings = new WorldSettings { width = 40f, height = 40f };
         settings.food.tileSize = 5f;
         settings.food.maxPlantsPerTile = maxPlantsPerTile;
+        // 필드 고기(FOOD-08)는 끕니다. 먹이 개수 검사가 무작위 생성에 흔들리지 않게 합니다.
+        settings.food.meatSpawnIntervalMax = 0f;
         return new WorldSimulation(settings, seed: 1234);
     }
 

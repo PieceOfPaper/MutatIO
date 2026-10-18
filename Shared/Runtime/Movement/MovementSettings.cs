@@ -10,17 +10,8 @@ namespace MutatIO.Shared.Movement
     [Serializable]
     public sealed class MovementSettings
     {
-        /// <summary>(MOVE-01) 초기 몸집에서의 최고 이동속도. 월드 단위/초.</summary>
+        /// <summary>(MOVE-01) 최고 이동속도. 월드 단위/초. 몸집과 무관하게 같습니다(몸집별 감속 MOVE-02·03 제거).</summary>
         public float baseSpeed = 5f;
-
-        /// <summary>
-        /// (MOVE-02) 몸집별 속도 배율 곡선의 지수. 배율 = 몸집^(-지수).
-        /// 몸집은 초기 몸집을 1로 둔 상대값입니다. 0이면 몸집에 따른 감소가 없습니다.
-        /// </summary>
-        public float sizeSpeedExponent = 0.3f;
-
-        /// <summary>(MOVE-03) 몸집이 커져도 유지할 최소 속도 배율.</summary>
-        public float minSpeedMultiplier = 0.4f;
 
         /// <summary>(MOVE-04, MOVE-06) 정지 상태에서 최고 속도에 도달하는 시간. 방향 전환도 같은 응답을 사용합니다. 초.</summary>
         public float accelerationTime = 0.12f;
@@ -34,7 +25,7 @@ namespace MutatIO.Shared.Movement
         /// </summary>
         public float minMoveInput = 0.05f;
 
-        /// <summary>(DASH-01) 대시 중 속도 배율. 몸집이 반영된 최고 속도에 곱합니다.</summary>
+        /// <summary>(DASH-01) 대시 중 속도 배율. 최고 속도에 곱합니다.</summary>
         public float dashSpeedMultiplier = 3f;
 
         /// <summary>(DASH-02) 대시 지속시간. 초.</summary>

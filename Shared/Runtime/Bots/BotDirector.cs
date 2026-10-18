@@ -134,11 +134,26 @@ namespace MutatIO.Shared.Bots
             var name = BotNames.Pick(random, namesInUse);
             var creature = world.SpawnCreature(FindSpawnPosition(), name);
             var offset = (NextFloat() * 2f - 1f) * Math.Max(0f, settings.skillVariance);
-            var bot = new Bot(name, creature, new BotBrain(creature, CreateSkill(offset), new Random(random.Next())), offset);
+            var seeksMeat = CountMeatSeekers() < settings.meatSeekerCount;
+            var bot = new Bot(name, creature, new BotBrain(creature, CreateSkill(offset), new Random(random.Next()), seeksMeat), offset);
             bots.Add(bot);
             namesInUse.Add(name);
             BotJoined?.Invoke(bot);
             return bot;
+        }
+
+        private int CountMeatSeekers()
+        {
+            var count = 0;
+            foreach (var bot in bots)
+            {
+                if (bot.SeeksMeat)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private void OnCreatureDied(CreatureDeath death)

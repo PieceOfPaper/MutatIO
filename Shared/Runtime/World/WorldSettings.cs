@@ -15,11 +15,14 @@ namespace MutatIO.Shared.World
     [Serializable]
     public sealed class WorldSettings
     {
-        /// <summary>(WORLD-01) 맵 가로 크기. 월드 단위. 초기 가정 1000. 고정 크기 사각 맵이며 시작 시에만 적용합니다.</summary>
-        public float width = 1000f;
+        /// <summary>
+        /// (WORLD-01) 맵 가로 크기. 월드 단위. 고정 크기 사각 맵이며 시작 시에만 적용합니다.
+        /// 임시: 초기 가정 1000에서 프로토타입은 만남 빈도를 위해 200으로 줄였습니다.
+        /// </summary>
+        public float width = 200f;
 
-        /// <summary>(WORLD-01) 맵 세로 크기. 월드 단위. 초기 가정 1000.</summary>
-        public float height = 1000f;
+        /// <summary>(WORLD-01) 맵 세로 크기. 월드 단위. 프로토타입 200(초기 가정 1000).</summary>
+        public float height = 200f;
 
         public MovementSettings movement = new MovementSettings();
         public GrowthSettings growth = new GrowthSettings();

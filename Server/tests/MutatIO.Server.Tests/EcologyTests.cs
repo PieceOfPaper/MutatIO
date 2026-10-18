@@ -22,7 +22,7 @@ public sealed class EcologyTests
         world.Step(Dt);
 
         Assert.Equal(WorldSimulation.GetMeatDropCount(10, world.Settings.food), world.Food.Items.Count);
-        Assert.Equal(5, world.Food.Items.Count);
+        Assert.Equal(3, world.Food.Items.Count);
         var spread = herbivore.Radius + world.Settings.food.meatDropSpread;
         Assert.All(world.Food.Items, food =>
         {
@@ -33,7 +33,7 @@ public sealed class EcologyTests
     }
 
     [Fact]
-    public void CarnivoreDeath_DropsNoMeat()
+    public void CarnivoreDeath_DropsMeatLikeHerbivore()
     {
         var world = CreateWorld();
         var carnivore = world.SpawnCreature(Vector2.Zero);
@@ -43,7 +43,8 @@ public sealed class EcologyTests
 
         world.Step(Dt);
 
-        Assert.Empty(world.Food.Items);
+        Assert.Equal(WorldSimulation.GetMeatDropCount(10, world.Settings.food), world.Food.Items.Count);
+        Assert.All(world.Food.Items, food => Assert.Equal(FoodKind.Meat, food.Kind));
     }
 
     [Fact]
@@ -63,7 +64,8 @@ public sealed class EcologyTests
         Assert.Equal(DeathCause.Killed, death.Cause);
         Assert.Same(hunter, death.Killer);
         Assert.False(prey.IsAlive);
-        Assert.Equal(2, world.Food.Items.Count(food => food.Kind == FoodKind.Meat));
+        Assert.Equal(WorldSimulation.GetMeatDropCount(4, world.Settings.food), world.Food.Items.Count(food => food.Kind == FoodKind.Meat));
+        Assert.Equal(1, world.Food.Items.Count(food => food.Kind == FoodKind.Meat));
     }
 
     [Fact]
@@ -76,7 +78,7 @@ public sealed class EcologyTests
         world.Step(Dt);
 
         Assert.False(small.IsAlive);
-        Assert.Empty(world.Food.Items);
+        Assert.Equal(WorldSimulation.GetMeatDropCount(9, world.Settings.food), world.Food.Items.Count(food => food.Kind == FoodKind.Meat));
     }
 
     [Theory]
@@ -246,17 +248,173 @@ public sealed class EcologyTests
     }
 
     [Fact]
-    public void NonKillingCarnivoreContact_PassesThrough()
+    public void NonKillingCarnivoreContact_PushesApart()
     {
         var world = CreateWorld();
         var carnivore = SpawnCarnivore(world, Vector2.Zero, 1);
         var herbivore = world.SpawnCreature(new Vector2(0.2f, 0f));
         herbivore.AddIntake(5, world.Settings.growth);
 
+        for (var i = 0; i < 60; i++)
+        {
+            world.Step(Dt);
+        }
+
+        Assert.True(carnivore.IsAlive);
+        Assert.True(herbivore.IsAlive);
+        Assert.True(Vector2.Distance(carnivore.Movement.Position, herbivore.Movement.Position) >= carnivore.Radius + herbivore.Radius - 0.01f);
+    }
+
+    [Fact]
+    public void EqualScoreCarnivores_PushApart()
+    {
+        var world = CreateWorld();
+        var a = SpawnCarnivore(world, Vector2.Zero, 5);
+        var b = SpawnCarnivore(world, new Vector2(0.2f, 0f), 5);
+
+        for (var i = 0; i < 60; i++)
+        {
+            world.Step(Dt);
+        }
+
+        Assert.True(a.IsAlive && b.IsAlive);
+        Assert.True(Vector2.Distance(a.Movement.Position, b.Movement.Position) >= a.Radius + b.Radius - 0.01f);
+    }
+
+    [Fact]
+    public void Push_LargerBodyMovesLessAndPushesSmallerMore()
+    {
+        var world = CreateWorld();
+        var big = world.SpawnCreature(Vector2.Zero);
+        big.AddIntake(300, world.Settings.growth);
+        var small = world.SpawnCreature(new Vector2(big.Radius, 0f));
+        Assert.True(big.Radius > small.Radius * 1.5f);
+
         world.Step(Dt);
 
-        Assert.Equal(Vector2.Zero, carnivore.Movement.Position);
-        Assert.Equal(new Vector2(0.2f, 0f), herbivore.Movement.Position);
+        var bigMoved = big.Movement.Position.Length();
+        var smallMoved = small.Movement.Position.X - big.Radius;
+        var massRatio = (float)Math.Pow(big.Radius / small.Radius, world.Settings.contact.separationMassExponent);
+        Assert.True(smallMoved > 0f && bigMoved > 0f);
+        Assert.Equal(massRatio, smallMoved / bigMoved, 2);
+    }
+
+    [Fact]
+    public void Meat_DecaysAfterLifetime()
+    {
+        var world = CreateWorld();
+        world.Settings.food.meatLifetime = 2f;
+        var meat = world.Food.Spawn(FoodKind.Meat, new Vector2(10f, 10f));
+        var plant = world.Food.Spawn(FoodKind.Plant, new Vector2(-10f, -10f));
+
+        Assert.True(meat.Decays);
+        Assert.False(plant.Decays);
+        Step(world, 1.9f);
+        Assert.True(world.Food.Contains(meat));
+
+        Step(world, 0.2f);
+        Assert.False(world.Food.Contains(meat));
+        Assert.True(world.Food.Contains(plant));
+    }
+
+    [Fact]
+    public void Meat_DoesNotDecayWhenLifetimeIsZero()
+    {
+        var world = CreateWorld();
+        world.Settings.food.meatLifetime = 0f;
+        var meat = world.Food.Spawn(FoodKind.Meat, new Vector2(10f, 10f));
+
+        Step(world, 60f);
+
+        Assert.False(meat.Decays);
+        Assert.True(world.Food.Contains(meat));
+    }
+
+    [Fact]
+    public void Meat_BeingAttracted_IsEatenEvenIfItsTimeRunsOut()
+    {
+        var world = CreateWorld();
+        world.Settings.food.meatLifetime = 0.05f;
+        world.Settings.food.magnetPullSpeed = 1f;
+        var carnivore = SpawnCarnivore(world, Vector2.Zero, 0);
+        carnivore.SetSatiety(world.Settings.hunger.maxSatiety * 0.5f);
+        var meat = world.Food.Spawn(FoodKind.Meat, new Vector2(carnivore.Radius + 1f, 0f));
+        var eaten = new List<FoodItem>();
+        world.FoodConsumed += (food, _) => eaten.Add(food);
+
+        Step(world, 0.1f);
+        Assert.Equal(0f, meat.TimeLeft);
+        Assert.True(world.Food.Contains(meat));
+
+        Step(world, 2f);
+        Assert.Contains(meat, eaten);
+    }
+
+    [Fact]
+    public void FieldMeat_SpawnsOccasionallyAndDecays()
+    {
+        var world = CreateWorld(meatSpawnInterval: 5f);
+        world.Settings.food.meatLifetime = 3f;
+
+        Step(world, 4.9f);
+        Assert.Empty(world.Food.Items);
+
+        Step(world, 0.2f);
+        var meat = Assert.Single(world.Food.Items);
+        Assert.Equal(FoodKind.Meat, meat.Kind);
+        Assert.Equal(FoodItem.NoTile, meat.OriginTile);
+        Assert.True(meat.Decays);
+
+        Step(world, 3.1f);
+        Assert.False(world.Food.Contains(meat));
+    }
+
+    [Fact]
+    public void FieldMeat_ShortIntervalSpawnsSeveralPerStep()
+    {
+        var world = CreateWorld(meatSpawnInterval: Dt / 4f);
+        world.Settings.food.meatLifetime = 100f;
+
+        world.Step(Dt);
+
+        Assert.Equal(4, world.Food.Items.Count);
+    }
+
+    [Fact]
+    public void FieldMeat_FillStartsAtSteadyCountWithSpreadLifetimes()
+    {
+        var world = CreateWorld(meatSpawnInterval: 0.5f);
+        world.Settings.food.meatLifetime = 30f;
+
+        world.Food.FillFieldMeat();
+
+        Assert.Equal(60, FoodField.GetFieldMeatSteadyCount(world.Settings.food));
+        Assert.Equal(60, world.Food.Items.Count);
+        Assert.All(world.Food.Items, food => Assert.InRange(food.TimeLeft, 0f, 30f));
+        Assert.True(world.Food.Items.Select(food => food.TimeLeft).Distinct().Count() > 50);
+    }
+
+    [Fact]
+    public void FieldMeat_DoesNotSpawnUnderCreatures()
+    {
+        var settings = new WorldSettings { width = 5f, height = 5f };
+        settings.food.maxPlantsPerTile = 0;
+        settings.food.meatSpawnIntervalMin = 1f;
+        settings.food.meatSpawnIntervalMax = 1f;
+        var world = new WorldSimulation(settings, seed: 7);
+        world.SpawnCreature(Vector2.Zero);
+
+        Step(world, 3f);
+
+        Assert.Empty(world.Food.Items);
+    }
+
+    private static void Step(WorldSimulation world, float seconds)
+    {
+        for (var elapsed = 0f; elapsed < seconds - 0.0001f; elapsed += Dt)
+        {
+            world.Step(Dt);
+        }
     }
 
     private static Creature SpawnCarnivore(WorldSimulation world, Vector2 position, int score)
@@ -267,11 +425,14 @@ public sealed class EcologyTests
         return creature;
     }
 
-    private static WorldSimulation CreateWorld(int maxPlantsPerTile = 0)
+    private static WorldSimulation CreateWorld(int maxPlantsPerTile = 0, float meatSpawnInterval = 0f)
     {
         var settings = new WorldSettings { width = 40f, height = 40f };
         settings.food.tileSize = 5f;
         settings.food.maxPlantsPerTile = maxPlantsPerTile;
+        // 기본은 필드 고기 생성을 꺼서 고기 개수 검사가 무작위 생성에 흔들리지 않게 합니다.
+        settings.food.meatSpawnIntervalMin = meatSpawnInterval;
+        settings.food.meatSpawnIntervalMax = meatSpawnInterval;
         return new WorldSimulation(settings, seed: 4321);
     }
 }

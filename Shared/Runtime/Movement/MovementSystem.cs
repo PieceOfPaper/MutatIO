@@ -9,36 +9,23 @@ namespace MutatIO.Shared.Movement
     /// </summary>
     public static class MovementSystem
     {
-        /// <summary>
-        /// 몸집이 반영된 최고 이동속도입니다. 몸집은 초기 몸집을 1로 둔 상대값입니다.
-        /// </summary>
-        public static float GetMaxSpeed(float size, MovementSettings settings)
+        /// <summary>최고 이동속도입니다. 몸집과 무관합니다.</summary>
+        public static float GetMaxSpeed(MovementSettings settings)
         {
-            return settings.baseSpeed * GetSizeSpeedMultiplier(size, settings);
-        }
-
-        public static float GetSizeSpeedMultiplier(float size, MovementSettings settings)
-        {
-            if (size <= 1f)
-            {
-                return 1f;
-            }
-
-            var multiplier = (float)Math.Pow(size, -settings.sizeSpeedExponent);
-            return Math.Max(settings.minSpeedMultiplier, multiplier);
+            return settings.baseSpeed;
         }
 
         /// <summary>
         /// 이동 상태를 dt만큼 진행합니다. 이번 스텝에 대시가 시작되면 true를 반환합니다.
         /// </summary>
-        public static bool Step(ref MovementState state, in PlayerCommand command, float size, MovementSettings settings, float deltaTime)
+        public static bool Step(ref MovementState state, in PlayerCommand command, MovementSettings settings, float deltaTime)
         {
             if (deltaTime <= 0f)
             {
                 return false;
             }
 
-            var maxSpeed = GetMaxSpeed(size, settings);
+            var maxSpeed = GetMaxSpeed(settings);
             var input = command.Move;
             var inputLength = input.Length();
             var hasInput = inputLength > settings.minMoveInput;

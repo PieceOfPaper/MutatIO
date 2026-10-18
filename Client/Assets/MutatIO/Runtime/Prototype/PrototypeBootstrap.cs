@@ -164,7 +164,7 @@ namespace MutatIO.Prototype
             {
                 var creature = bot.Creature;
                 var role = creature.Role == CreatureRole.Carnivore ? "C" : "H";
-                statusBuilder.Append($"  {bot.Name} [{role}]: {bot.Intent}  Score {creature.Intake}  Satiety {creature.Satiety:0}\n");
+                statusBuilder.Append($"  {bot.Name}{(bot.SeeksMeat ? "*" : "")} [{role}]: {bot.Intent}  Score {creature.Intake}  Satiety {creature.Satiety:0}\n");
             }
 
             statusText.text = statusBuilder.ToString();

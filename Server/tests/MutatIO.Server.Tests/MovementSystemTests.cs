@@ -66,23 +66,11 @@ public sealed class MovementSystemTests
     }
 
     [Fact]
-    public void LargerSize_MovesSlowerButNotBelowMinimum()
-    {
-        var small = MovementSystem.GetMaxSpeed(1f, settings);
-        var medium = MovementSystem.GetMaxSpeed(4f, settings);
-        var huge = MovementSystem.GetMaxSpeed(100000f, settings);
-
-        Assert.Equal(settings.baseSpeed, small, 4);
-        Assert.True(medium < small);
-        Assert.Equal(settings.baseSpeed * settings.minSpeedMultiplier, huge, 4);
-    }
-
-    [Fact]
     public void Dash_BeforeAnyMovement_IsIgnoredWithoutCooldown()
     {
         var state = MovementState.At(Vector2.Zero);
 
-        var started = MovementSystem.Step(ref state, new PlayerCommand(Vector2.Zero, true), 1f, settings, Dt);
+        var started = MovementSystem.Step(ref state, new PlayerCommand(Vector2.Zero, true), settings, Dt);
 
         Assert.False(started);
         Assert.False(state.IsDashing);
@@ -95,7 +83,7 @@ public sealed class MovementSystemTests
         var state = MovementState.At(Vector2.Zero);
         Simulate(ref state, new PlayerCommand(Right, false), 0.5f);
 
-        var started = MovementSystem.Step(ref state, new PlayerCommand(Up, true), 1f, settings, Dt);
+        var started = MovementSystem.Step(ref state, new PlayerCommand(Up, true), settings, Dt);
 
         Assert.True(started);
         Assert.Equal(Up, state.DashDirection);
@@ -110,7 +98,7 @@ public sealed class MovementSystemTests
         Simulate(ref state, PlayerCommand.None, 1f);
         Assert.Equal(Vector2.Zero, state.Velocity);
 
-        Assert.True(MovementSystem.Step(ref state, new PlayerCommand(Vector2.Zero, true), 1f, settings, Dt));
+        Assert.True(MovementSystem.Step(ref state, new PlayerCommand(Vector2.Zero, true), settings, Dt));
         Assert.Equal(Up, state.DashDirection);
     }
 
@@ -119,7 +107,7 @@ public sealed class MovementSystemTests
     {
         var state = MovementState.At(Vector2.Zero);
         Simulate(ref state, new PlayerCommand(Right, false), 0.5f);
-        MovementSystem.Step(ref state, new PlayerCommand(Right, true), 1f, settings, Dt);
+        MovementSystem.Step(ref state, new PlayerCommand(Right, true), settings, Dt);
 
         Step(ref state, new PlayerCommand(Up, false));
 
@@ -132,15 +120,15 @@ public sealed class MovementSystemTests
     {
         var state = MovementState.At(Vector2.Zero);
         Simulate(ref state, new PlayerCommand(Right, false), 0.5f);
-        Assert.True(MovementSystem.Step(ref state, new PlayerCommand(Right, true), 1f, settings, Dt));
+        Assert.True(MovementSystem.Step(ref state, new PlayerCommand(Right, true), settings, Dt));
 
         Simulate(ref state, new PlayerCommand(Right, false), settings.dashDuration + Dt);
         Assert.False(state.IsDashing);
         Assert.True(state.DashCooldownRemaining > 0f);
-        Assert.False(MovementSystem.Step(ref state, new PlayerCommand(Right, true), 1f, settings, Dt));
+        Assert.False(MovementSystem.Step(ref state, new PlayerCommand(Right, true), settings, Dt));
 
         Simulate(ref state, new PlayerCommand(Right, false), settings.dashCooldown + Tolerance);
-        Assert.True(MovementSystem.Step(ref state, new PlayerCommand(Right, true), 1f, settings, Dt));
+        Assert.True(MovementSystem.Step(ref state, new PlayerCommand(Right, true), settings, Dt));
     }
 
     [Fact]
@@ -148,7 +136,7 @@ public sealed class MovementSystemTests
     {
         var state = MovementState.At(Vector2.Zero);
         Simulate(ref state, new PlayerCommand(Right, false), 0.5f);
-        MovementSystem.Step(ref state, new PlayerCommand(Right, true), 1f, settings, Dt);
+        MovementSystem.Step(ref state, new PlayerCommand(Right, true), settings, Dt);
 
         Simulate(ref state, new PlayerCommand(Right, false), settings.dashDuration + 1f);
 
@@ -157,7 +145,7 @@ public sealed class MovementSystemTests
 
     private void Step(ref MovementState state, PlayerCommand command)
     {
-        MovementSystem.Step(ref state, command, 1f, settings, Dt);
+        MovementSystem.Step(ref state, command, settings, Dt);
     }
 
     private void Simulate(ref MovementState state, PlayerCommand command, float seconds)

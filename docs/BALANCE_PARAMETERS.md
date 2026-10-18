@@ -70,7 +70,8 @@
 | MAGNET-02 | 흡수 이동속도·가속 | 속도 또는 곡선 | 연출과 경쟁 판정 시차 |
 | MAGNET-03 | 섭취 완료 거리 | 월드 단위, 기준은 구현 시 명시 | 보상 시점 명확성 |
 | PUSH-01 | 육식에 의한 초식 먹이 밀림 반응 | 속도·거리·감쇠 | 먹이 귀속은 최초 생성 타일로 고정 |
-| PUSH-02 | 초식끼리 밀림 반응 | 거리·응답·저항 | 중첩 해소와 조작감 |
+| PUSH-02 | 비처치 접촉 밀림 반응 | 거리·응답·저항 | 중첩 해소와 조작감 |
+| PUSH-03 | 밀림의 크기별 무게 | 반경 → 무게 지수 | 큰 개체가 더 밀어내는가 |
 
 ## 3. 허기·성장·변이·사망
 
@@ -122,8 +123,10 @@
 | BOT-01 | 월드 최소 유지 인원 | 명(접속한 사람 + 봇) | 사람이 적을 때 월드가 비어 보이지 않는가 |
 | BOT-02 | 빈자리 발생 후 봇 입장 지연 | 초(최소~최대 무작위) | 다른 플레이어가 들어온 것처럼 자연스러운가 |
 | BOT-03 | 봇 수준과 봇별 편차 | 0~1 | 수준을 낮추면 봇이 자연스럽게 사라지는가 |
-| BOT-04 | 수준 0·1의 행동 값(판단 주기·인지 거리·위험 인지·집중·조준 오차·이동 세기·대시 확률) | 각 단위, 수준으로 선형 보간 | 사람과 경쟁이 되는가, 너무 기계적이지 않은가 |
+| BOT-04 | 수준 0·1의 행동 값(판단 주기·인지 거리·사냥 거리·위험 인지·집중·조준 오차·멈춤 확률·대시 확률) | 각 단위, 수준으로 선형 보간 | 사람과 경쟁이 되는가, 너무 기계적이지 않은가 |
 | BOT-05 | 봇 입장 영역 | 월드 단위 | 스폰 규칙(SPAWN-01) 결정 전 프로토타입용 |
+| BOT-06 | 육식 지향 봇 수 | 명 | 월드에 육식이 꾸준히 생겨 너무 평화롭지 않은가 |
+| BOT-07 | 육식 봇이 따라다닐 굶주린 생명체 기준 | 포만 비율 | 굶어 죽는 생명체의 고기가 육식에게 돌아가는가 |
 
 ## 5. 코드 연결과 현재 임시값
 
@@ -134,8 +137,8 @@ M1~M5 구현은 2026-10-17 M6 착수 전에 확정 기획에 맞춰 정리했습
 | 항목 ID | 코드 위치 | 임시값 |
 | --- | --- | --- |
 | MOVE-01 | `MovementSettings.baseSpeed` (`Shared/Runtime/Movement`) | 5 월드 단위/초 |
-| MOVE-02 | `MovementSettings.sizeSpeedExponent` — 배율 = 몸집^(-지수), 몸집은 초기 1 기준 | 0.3 |
-| MOVE-03 | `MovementSettings.minSpeedMultiplier` | 0.4 |
+| MOVE-02 | 제거(2026-10-18) — 몸집이 커져도 느려지지 않음. 모든 몸집이 MOVE-01 속도 | — |
+| MOVE-03 | 제거(2026-10-18) — MOVE-02 제거로 불필요 | — |
 | MOVE-04, MOVE-06 | `MovementSettings.accelerationTime` — 정지→최고 속도 도달 시간, 방향 전환도 동일 응답 | 0.12초 |
 | MOVE-05 | `MovementSettings.decelerationTime` — 최고 속도→정지 시간 | 0.2초 |
 | DASH-01 | `MovementSettings.dashSpeedMultiplier` | 3배 |
@@ -144,26 +147,28 @@ M1~M5 구현은 2026-10-17 M6 착수 전에 확정 기획에 맞춰 정리했습
 | DASH-04 | 미구현(임시안: 비용 없음) | — |
 | INPUT-01 | `VirtualJoystick.radius`, `deadZone` (`Client/.../Runtime/Input`) | 반경 65 캔버스 단위(테스트 씬), 데드존 0.15 |
 | INPUT-02 | `PlayerCommandSource.pointerDeadZone` — 화면 높이 대비 | 0.03 |
-| WORLD-01 | `WorldSettings.width`, `height` (`Shared/Runtime/World`) — 시작 시에만 적용 | 1000 × 1000(초기 가정) |
-| FOOD-01 | `FoodSettings.tileSize` (`Shared/Runtime/Feeding`) — 시작 시에만 적용 | 5 × 5(초기 가정), 200 × 200 = 40,000타일 |
+| WORLD-01 | `WorldSettings.width`, `height` (`Shared/Runtime/World`) — 시작 시에만 적용 | 200 × 200(프로토타입 만남 빈도용, 초기 가정 1000 × 1000) |
+| FOOD-01 | `FoodSettings.tileSize` (`Shared/Runtime/Feeding`) — 시작 시에만 적용 | 5 × 5(초기 가정), 40 × 40 = 1,600타일 |
 | FOOD-02 | `FoodSettings.plantRegenInterval` — 타일별, 귀속 잔존 개수가 상한 미만일 때 진행 | 15초 |
-| FOOD-03 | `FoodSettings.maxPlantsPerTile` — 시작 시 모든 타일을 이 개수까지 채움 | 1개(월드 최대 40,000개) |
+| FOOD-03 | `FoodSettings.maxPlantsPerTile` — 시작 시 모든 타일을 이 개수까지 채움 | 1개(월드 최대 1,600개) |
 | MAGNET-01 | `FoodSettings.magnetRange` — 몸 가장자리 기준 고정 거리 a | 1.5 |
 | MAGNET-02 | `FoodSettings.magnetPullSpeed` | 12 월드 단위/초 |
 | MAGNET-03 | `FoodSettings.consumeDistance` — 몸 가장자리 기준 | 0 |
 | HUNGER-01 | `HungerSettings.maxSatiety`, `startSatiety` (`Shared/Runtime/Hunger`) | 100, 100 |
-| HUNGER-02 | `HungerSettings.decayPerSecond` | 2 게이지/초(가득 찬 상태에서 50초 생존) |
-| FOOD-05 | `HungerSettings.plantSatiety`, `meatSatiety` — 초기 몸집 기준 먹이 1개 회복량, 최대 포만에서 멈춤. 육식은 초식 먹이로 회복하지 않음 | 초식 먹이 4(2초 분량), 고기 8 |
+| HUNGER-02 | `HungerSettings.decayPerSecond` | 3 게이지/초(2026-10-18, 2에서 1.5배. 가득 찬 상태에서 약 33초 생존) |
+| FOOD-05 | `HungerSettings.plantSatiety`, `meatSatiety` — 초기 몸집 기준 먹이 1개 회복량, 최대 포만에서 멈춤. 육식은 초식 먹이로 회복하지 않음 | 초식 먹이 4(약 1.3초 분량), 고기 32(약 11초 분량, 2026-10-18, 8에서 4배. 초식은 FOOD-06으로 16) |
 | FOOD-06 | `HungerSettings.herbivoreMeatEfficiency` — 초식이 고기를 먹을 때 고기 회복량에 곱함 | 0.5(초기 몸집에서 4) |
 | MUTATE-01 | `MutationSettings.baseThreshold` (`Shared/Runtime/Mutation`) | 5 |
 | MUTATE-04 | `MutationSettings.sizeThresholdExponent` — 임계치 = 기본값 × 몸집^지수, 이번 먹이로 성장한 뒤 몸집 기준 | 1(몸집 2에서 10) |
 | MUTATE-02 | `MutationSettings.decayPerSecond` — 초식만, 0에서 멈춤 | 0.1/초 |
 | MUTATE-03 | `MutationSettings.gainPerMeat` | 1 |
-| DROP-01 | `FoodSettings.meatDropRatio` — 고기 개수 = 반올림(점수 × 값), 0.5는 올림 | 0.5 |
+| DROP-01 | `FoodSettings.meatDropRatio` — 초식·육식 모두 사망 시(2026-10-18부터 육식 포함) 고기 개수 = 반올림(점수 × 값), 0.5는 올림 | 0.25(2026-10-18, 0.5에서 절반) |
 | DROP-02 | 고기 1개 = 1점, 회복량은 FOOD-05·06 | — |
-| DROP-03 | `FoodSettings.meatDropSpread` — 몸 반경 + 이 값 안에 균등 무작위. 유지시간(부패) 미구현 | 1.5 |
+| DROP-03 | `FoodSettings.meatDropSpread` — 몸 반경 + 이 값 안에 균등 무작위 / `FoodSettings.meatLifetime` — 생성 후 이 시간이 지나면 썩어 사라짐(보상 없음), 0 이하면 썩지 않음, 흡수 중인 고기는 섭취를 마침. 사라지기 5초 전부터 흐려짐(`FoodFieldView`, 표시 전용) | 1.5 / 30초 |
+| FOOD-08 | `FoodSettings.meatSpawnIntervalMin`, `meatSpawnIntervalMax` — 사망 드롭과 별개로 맵 전체에서 이 간격(무작위)마다 고기 1개를 생명체가 덮지 않은 무작위 위치에 생성, DROP-03 유지시간 뒤 부패. 월드 시작 시 정상 상태 개수(유지시간 ÷ 평균 간격)를 남은 시간을 나누어 미리 깖. 최대값 0 이하면 끔 | 0.1~0.24초(200×200 맵에 약 175개 유지, 시작 화면 28×16에 평균 2개 정도) |
 | PUSH-01 | `ContactSettings.plantPushMargin` (`Shared/Runtime/Combat`) — 육식 몸 안의 초식 먹이를 가장자리 + 값 위치로 즉시 이동 | 0.05 |
-| PUSH-02 | `ContactSettings.herbivoreSeparationRate` — 스텝마다 겹침 × min(1, 값 × dt)만큼 분리, 큰 쪽이 덜 밀림(면적 비율) | 20/초 |
+| PUSH-02 | `ContactSettings.separationRate` — 서로 처치할 수 없는 모든 쌍(초식끼리, 동점, 작은 육식과 큰 초식 등)을 스텝마다 겹침 × min(1, 값 × dt)만큼 분리 | 20/초 |
+| PUSH-03 | `ContactSettings.separationMassExponent` — 무게 = 반경^값, 겹침을 무게 반비례로 나눔(큰 쪽이 덜 밀리고 작은 쪽을 더 밀어냄). 2 = 면적, 3 = 부피, 0 = 반반 | 3 |
 | HUNGER-05 | `HungerSettings.sizeSatietyExponent` — 회복 배율 = 몸집^(-지수) | 0.5(몸집 2에서 0.71배) |
 | HUNGER-06 | `HungerSettings.minSatietyMultiplier` | 0.25(몸집 16 이상에서 하한) |
 | GROW-01 | `GrowthSettings.areaPerIntake` — 몸집 = √(1 + 섭취량 × 값) | 0.05 |
@@ -174,11 +179,13 @@ M1~M5 구현은 2026-10-17 M6 착수 전에 확정 기획에 맞춰 정리했습
 | UI-01 | `PlayerProfile.MaxNicknameLength` (`Client/.../Runtime/Profile`) — 앞뒤 공백 제거 후 텍스트 요소(문자) 수 기준 | 12자 |
 | HUD-01 | `RankingView.maxEntries`, `refreshInterval` (`Client/.../Runtime/UI`) | 10명, 0.5초 |
 | HUD-02 | `CreatureHeadView.screenScale`, `gap` (`Client/.../Runtime/Creatures`) — 표시 단위 = 카메라 세로 절반 범위 × 비율. 게이지는 장식(귀) 윗끝 + 간격 위, 길이 2단위 | 0.12(시작 시 약 0.96 월드 단위), 0.35단위 |
-| BOT-01 | `BotSettings.minPopulation` (`Shared/Runtime/Bots`) — 접속한 사람은 첫 화면·결과 화면에 있어도 한 자리 | 5명(프로토타입: 나 + 봇 4) |
+| BOT-01 | `BotSettings.minPopulation` (`Shared/Runtime/Bots`) — 접속한 사람은 첫 화면·결과 화면에 있어도 한 자리 | 29명(프로토타입: 나 + 봇 28) |
 | BOT-02 | `BotSettings.joinDelayMin`, `joinDelayMax` | 3~10초 |
 | BOT-03 | `BotSettings.skillLevel`, `skillVariance` — 봇별 수준 = 전체 수준 ± 편차, 0~1로 제한 | 0.6, ±0.15 |
-| BOT-04 | `BotSettings.low`, `high` (`BotSkillProfile`) — 판단 주기, 인지 거리, 위험 인지 확률, 먹이·사냥감 집중 확률, 조준 오차, 이동 입력 세기, 대시 확률 | 수준 0: 1.2초, 3, 0, 0.05, 60°, 0.15, 0 / 수준 1: 0.15초, 14, 1, 1, 3°, 1, 0.9 |
-| BOT-05 | `BotSettings.spawnAreaHalfExtent` — 맵 중앙 정사각 영역 절반 크기, 0 이하면 맵 전체 | 40(중앙 80×80) |
+| BOT-04 | `BotSettings.low`, `high` (`BotSkillProfile`) — 판단 주기, 인지 거리, 사냥 거리(육식이 사냥감을 찾고 계속 쫓는 거리, 쫓던 사냥감은 집중 확률과 무관하게 이 거리를 벗어날 때까지 추격), 위험 인지 확률, 먹이·사냥감 집중 확률, 조준 오차, 멈춤 확률(판단 시 다음 판단까지 멈춰 있을 확률, 도주·추격 중 제외), 대시 확률. 이동 입력은 항상 최대 세기라 봇·사람 모두 같은 속도(이동 세기 pace는 2026-10-18 제거) | 수준 0: 1.2초, 3, 4, 0, 0.05, 60°, 0.6, 0 / 수준 1: 0.15초, 14, 24, 1, 1, 3°, 0, 0.9 |
+| BOT-05 | `BotSettings.spawnAreaHalfExtent` — 맵 중앙 정사각 영역 절반 크기, 0 이하면 맵 전체 | 0(맵 전체) |
+| BOT-06 | `BotSettings.meatSeekerCount` — 입장 시 살아 있는 육식 지향 봇이 이 수보다 적으면 성향 부여(죽으면 다음 입장 봇이 이어받음). 초식일 때 사냥 거리 안의 고기를 풀보다 먼저 노림, 고기가 없으면 일반 먹이 탐색 | 3명 |
+| BOT-07 | `BotSettings.stalkSatietyRatio` — 육식 봇은 포만 ÷ 최대 포만이 이 값 이하인 생명체(초식·육식, 나를 처치할 수 있는 육식은 제외·도주)를 처치할 수 없어도 사냥 거리 안에서 따라다님(몸 가장자리 1.5에서 멈춰 대기). 우선순위: 처치 가능한 사냥감 > 인지 거리 안 고기 > 굶주린 생명체. 따라다니던 대상은 사냥 거리를 벗어나거나 기준보다 배가 찰 때까지 유지 | 0.25 |
 
 봇 수준 확인(xUnit, 100×100 맵 단독 120초): 수준 1·0.6은 생존, 0.2·0은 굶주림 사망. 프로토타입 씬에서 수준 0으로 150초 진행 시 첫 사망 약 58초, 빈자리는 같은 수준의 새 봇이 채워 인원 5명 유지.
 
@@ -187,5 +194,10 @@ M1~M5 구현은 2026-10-17 M6 착수 전에 확정 기획에 맞춰 정리했습
 | 날짜/빌드 | 항목 ID | 임시값/비교값 | 조건 | 관찰 결과 | 채택 여부·이유 |
 | --- | --- | --- | --- | --- | --- |
 | 2026-10-17 Editor(자동 진행) | M6 전체 임시값, BOT-03 | 봇 수준 0.6 / 1 | 봇 4명만, 1000×1000 맵, 10분 | 수준 0.6: 굶주림 사망 9, 변이 2, 고기 섭취 209, 처치 0. 수준 1: 초식 굶주림 0, 육식 굶주림 4, 변이 4, 고기 섭취 284, 처치 0, 추격 시간 합계 14초. 변이로 육식은 생기지만 사냥에 실패해 굶어 죽음 | 미채택. 사람 플레이 확인 전. 몸집별 감속(MOVE-02)·대시·인지 거리와 육식 생존 여유를 함께 검토 필요 |
+| 2026-10-18 Editor(자동 진행) | FOOD-08 | 간격 0.05~0.12초, 유지 30초 | 200×200 맵, 나 + 봇 14(첫 화면), 시작 화면 28×16 | 시작 직후 고기 353개, 60초 뒤 323개. 맵 위 무작위 화면 200곳 기준 평균 3.5개, 중앙값 3, 10~90% 1~6개, 3~5개인 곳 54% | 임시 채택. 사람 플레이 확인 전. 초식도 고기를 먹으므로 xUnit 수준별 생존 테스트(100×100)에서 수준 0.2 봇이 굶어 죽지 않게 됨(해당 테스트는 필드 고기를 끄고 검사). 생존·변이 빈도 변화 확인 필요 |
+| 2026-10-18 Editor(자동 진행) | FOOD-08, BOT-04 사냥 거리 | 간격 0.1~0.24초(절반 빈도) / 사냥 거리 수준 0.6에서 약 16 | 200×200 맵, 봇 14, 4배속 약 8분 / 봇 1명을 강제 육식 전환(점수 +30) 후 약 2분 | 시작 고기 174개. 자연 변이는 약 8분 동안 육식 1~2명 수준으로 드묾. 강제 육식 봇은 사냥감이 사냥 거리에 들어오면 여러 판단 주기 동안 추격을 유지해 2회 처치. 이후 초식 점수가 육식보다 커져 처치할 대상이 없어지고 굶주림으로 기욺 | 임시 채택. 육식 점수가 고기·사냥으로만 늘어 초식에 뒤처지는 문제는 별도 검토 필요 |
+| 2026-10-18 Editor(자동 진행) | BOT-01, BOT-06 | 봇 28명(유지 인원 29), 육식 지향 0명 / 3명 | 200×200 맵, 4배속, 첫 화면(사람 없음) | 육식 지향 0명: 약 4분 동안 변이 0, 처치 0, 사망 0. 3명: 약 1분에 첫 변이, 약 10분 동안 변이 13, 처치 15, 굶주림 사망 14, 육식 동시 1~4명 | 임시 채택. 사람 플레이 확인 전 |
+| 2026-10-18 Editor(자동 진행) | FOOD-05 고기, DROP-01 육식 포함, BOT-07 대상 확대 | 고기 회복 8 → 32, 육식 사망 드롭 추가 | 200×200 맵, 봇 28(육식 지향 3), 4배속 약 8분, 첫 화면 | 변이 4, 처치 2(육식 피해 0), 굶주림 사망 초식 0·육식 1, 육식 동시 2~3명 유지. 관찰 시점에 Stalk 0 | 임시 채택. 고기 회복이 커져 굶주림 사망과 처치가 직전 기록(약 10분 처치 15·굶주림 14)보다 크게 줄어듦. 무작위 편차와 구분하려면 반복 측정 필요 |
+| 2026-10-18 Editor(자동 진행) | HUNGER-02 | 포만 감소 2 → 3/초 | 200×200 맵, 봇 28(육식 지향 3), 4배속 약 8분, 첫 화면 | 변이 24, 처치 16, 굶주림 사망 초식 18·육식 17, 육식 동시 4~6명, 추격 1~4명, 봇 평균 포만 58~84 | 임시 채택. 직전(감소 2: 변이 4, 처치 2, 굶주림 1)보다 생태 순환이 크게 활발해짐. 사람 플레이 확인 전 |
 
 같은 맵·초기 크기·입력 방식으로 기준을 맞추고 한 번에 적은 수의 변수를 바꿉니다. 대시 거리, 정지까지 이동거리, 크기별 추격 성공률, 포식자 발생·생존 시간 등을 비교합니다.

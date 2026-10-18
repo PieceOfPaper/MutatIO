@@ -28,12 +28,30 @@ namespace MutatIO.Shared.Feeding
         public float consumeDistance = 0f;
 
         /// <summary>
-        /// (DROP-01) 초식 사망 시 고기 환원율. 고기 개수 = 반올림(이번 생 점수 × 이 값). 육식 사망은 고기를 남기지 않습니다.
+        /// (DROP-01) 사망 시 고기 환원율. 고기 개수 = 반올림(이번 생 점수 × 이 값). 초식·육식 모두 남깁니다.
         /// 임시: 개수 변환(반올림)과 분배 방식은 미결정이며 임시안입니다.
         /// </summary>
-        public float meatDropRatio = 0.5f;
+        public float meatDropRatio = 0.25f;
 
-        /// <summary>(DROP-03) 고기가 흩어지는 범위. 죽은 몸 가장자리 바깥으로 이 거리까지. 월드 단위. 부패(유지시간)는 아직 없습니다.</summary>
+        /// <summary>(DROP-03) 고기가 흩어지는 범위. 죽은 몸 가장자리 바깥으로 이 거리까지. 월드 단위.</summary>
         public float meatDropSpread = 1.5f;
+
+        /// <summary>
+        /// (DROP-03) 고기 유지시간. 생성 후 이 시간이 지나면 썩어서 사라집니다. 초. 0 이하이면 썩지 않습니다.
+        /// 생성 시에 적용하며, 흡수(끌려가는 중) 중인 고기는 사라지지 않고 섭취를 마칩니다.
+        /// </summary>
+        public float meatLifetime = 30f;
+
+        /// <summary>
+        /// (FOOD-08) 필드에 고기가 저절로 생기는 간격의 최소값. 맵 전체 기준. 초. 최대값이 0 이하이면 생기지 않습니다.
+        /// 한 번에 1개를 생명체가 덮지 않은 맵 위 무작위 위치에 만들며, 사망 드롭 고기와 같이 <see cref="meatLifetime"/> 뒤 썩습니다.
+        /// 월드 시작 시에는 정상 상태 개수(유지시간 ÷ 평균 간격)만큼 미리 깔아 둡니다.
+        /// 임시: 사망 드롭 외 고기 공급은 프로토타입용 임시안입니다. 200×200 맵에서 약 175개가 유지되어
+        /// 시작 화면(짧은 변 16)에 평균 2개 정도 보이는 값입니다(3~5개 기준값 0.05~0.12초의 절반 빈도).
+        /// </summary>
+        public float meatSpawnIntervalMin = 0.1f;
+
+        /// <summary>(FOOD-08) 필드 고기 생성 간격의 최대값. 초. 매번 최소~최대 사이에서 무작위로 정합니다.</summary>
+        public float meatSpawnIntervalMax = 0.24f;
     }
 }

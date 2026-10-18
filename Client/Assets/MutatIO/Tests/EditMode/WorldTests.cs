@@ -16,6 +16,8 @@ namespace MutatIO.Tests.EditMode
         {
             var settings = new WorldSettings();
             settings.food.maxPlantsPerTile = 0;
+            // 필드 고기(FOOD-08)는 끕니다. 먹이 개수 검사가 무작위 생성에 흔들리지 않게 합니다.
+            settings.food.meatSpawnIntervalMax = 0f;
             var world = new WorldSimulation(settings, 1);
             var creature = world.SpawnCreature(System.Numerics.Vector2.Zero);
             world.Food.Spawn(FoodKind.Plant, new System.Numerics.Vector2(1f, 0f));

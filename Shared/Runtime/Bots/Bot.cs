@@ -25,5 +25,8 @@ namespace MutatIO.Shared.Bots
         public float SkillOffset { get; }
 
         public BotIntent Intent => Brain.Intent;
+
+        /// <summary>육식 지향 성향(BOT-06)인지입니다.</summary>
+        public bool SeeksMeat => Brain.SeeksMeat;
     }
 }
