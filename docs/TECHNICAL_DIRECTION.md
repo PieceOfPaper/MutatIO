@@ -436,8 +436,16 @@ Client/Assets/MutatIO/Runtime/
 - 브라우저에서 지원되지 않거나 제약이 큰 API를 도입하기 전에 확인합니다.
 - 메인 스레드 비용, GC 할당, 다운로드 크기와 메모리를 관리합니다.
 - 터치 입력과 가변 해상도를 막지 않는 UI를 사용합니다.
-- 브라우저 제약으로 WebSocket을 사용하며, WebGL에서는 jslib 브리지(`WebGLWebSocketTransport`)로 브라우저 WebSocket을 호출합니다. 서버 배포·호스팅 구조는 아직 정하지 않았습니다.
+- 브라우저 제약으로 WebSocket을 사용하며, WebGL에서는 jslib 브리지(`WebGLWebSocketTransport`)로 브라우저 WebSocket을 호출합니다. 클라이언트는 GitHub Pages에 배포하고(아래 '클라이언트 배포'), 서버 배포·호스팅 구조는 아직 정하지 않았습니다.
 - 기능 완료 판정에는 필요할 경우 실제 WebGL 빌드 검증을 포함합니다.
+
+### 클라이언트 배포
+
+- `.github/workflows/deploy-client.yml`이 GameCI `unity-builder`로 WebGL을 빌드하고 `actions/deploy-pages`로 GitHub Pages에 올립니다. `Client/Library`는 Actions 캐시로 재사용합니다.
+- 빌드 진입점은 `Client/Assets/MutatIO/Editor/WebGLPagesBuild.cs`의 `BuildForPages`입니다. 에디터 메뉴 `MutatIO > Build > WebGL (GitHub Pages)`로 같은 빌드를 로컬(`Client/Builds/WebGL`)에서 만들 수 있습니다.
+- 빌드 씬은 `Assets/MutatIO/Scenes/Prototype.unity`뿐이며 `EditorBuildSettings`의 씬 목록은 사용하지 않습니다.
+- GitHub Pages는 `Content-Encoding` 헤더를 지정할 수 없으므로 빌드하는 동안만 Gzip 압축과 Decompression Fallback을 켜고 끝나면 원래 설정으로 되돌립니다.
+- 서버 배포는 별도 워크플로로 추가할 예정입니다. 온라인 플레이를 배포하면 Pages(HTTPS)에서 접속하므로 서버는 `wss://`가 필요합니다.
 
 ## Unity CLI와 Pipeline
 
@@ -460,8 +468,7 @@ unity command --project-path "$(pwd)/Client" console --level error --tail 20
 - 서버 틱, 권위 범위, 방(인스턴스) 구조
 - 계정 및 데이터베이스
 - 서버 호스팅
-- CI/CD
-- WebGL 배포 대상
+- CI/CD — 클라이언트 GitHub Pages 배포만 구성, 서버 배포·테스트 CI 미정
 - 분석과 크래시 리포팅
 
 선택이 필요한 시점에는 후보를 비교하고 `docs/DECISIONS.md`에 근거와 함께 기록합니다.

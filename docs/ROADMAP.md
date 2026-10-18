@@ -94,11 +94,11 @@ Phase 1의 재미와 온라인 요구사항을 확인한 뒤 진행합니다.
 
 ## Phase 4 — WebGL 플레이어블
 
-- WebGL 빌드 자동화
+- WebGL 빌드 자동화 — GitHub Actions → GitHub Pages 워크플로 작성(`Prototype` 씬). CI 실행 결과 미확인
 - 브라우저 입력과 해상도 대응
 - 로딩과 메모리 최적화
 - 모바일 브라우저 지원 범위 검증
-- 배포 환경 결정
+- 배포 환경 결정 — 클라이언트는 GitHub Pages로 결정, 서버 미정
 - 외부 테스트 가능한 빌드 배포
 
 ## Phase 5 — 콘텐츠와 운영

@@ -119,9 +119,26 @@ Unity EditMode 테스트(Test Runner 또는 CLI)에는 실제 서버에 접속�
 unity command --project-path "$(pwd)/Client" run_tests --mode EditMode
 ```
 
+### 웹 배포 (GitHub Pages)
+
+`.github/workflows/deploy-client.yml`이 Unity WebGL 클라이언트(`Prototype` 씬, 서버 불필요)를 빌드해 GitHub Pages에 배포합니다. 배포 주소는 `https://pieceofpaper.github.io/MutatIO/`입니다.
+
+- 자동 실행: `main`에 `Client/Assets`·`Client/Packages`·`Client/ProjectSettings`·`Shared`·워크플로 파일 변경이 푸시될 때. Markdown만 바뀌면 실행하지 않습니다.
+- 수동 실행: GitHub Actions 탭 → `Deploy Client (GitHub Pages)` → `Run workflow`.
+- 로컬 빌드: Unity 메뉴 `MutatIO > Build > WebGL (GitHub Pages)` → `Client/Builds/WebGL`(커밋하지 않음).
+
+처음 한 번 저장소에서 다음을 설정해야 합니다.
+
+1. Settings → Pages → Build and deployment → Source를 **GitHub Actions**로 지정합니다.
+2. Settings → Secrets and variables → Actions에 Unity 라이선스 시크릿을 추가합니다([GameCI 활성화 안내](https://game.ci/docs/github/activation)).
+   - `UNITY_LICENSE`: Personal 라이선스 파일(`.ulf`) 내용. macOS는 사용자 폴더(`~/Library`)가 아닌 시스템 폴더 `/Library/Application Support/Unity/Unity_lic.ulf`입니다. 파일이 없으면 Unity Hub → Settings → Licenses에서 Personal 라이선스를 추가하면 생성됩니다. Hub가 쓰는 `~/Library/Unity/licenses/UnityEntitlementLicense.xml`은 GameCI에 쓸 수 없습니다.
+   - `UNITY_EMAIL`, `UNITY_PASSWORD`: Unity 계정 정보.
+
+서버 배포는 이후 별도 워크플로로 추가합니다.
+
 ## 현재 실행 및 검증 범위
 
-아직 게임플레이 대부분과 자동화된 빌드·테스트 파이프라인은 준비되지 않았습니다. 현재 구현된 것은 클라이언트–서버 연결과 Ping/Pong RTT 측정, 로컬 이동·대시와 네 가지 조작 입력, 맵 경계·초식 먹이 리젠·자석 흡수·성장·카메라 줌, 포만 감소·굶주림 사망·결과 화면·첫 화면 복귀, 첫 화면의 외형·닉네임·조작 선택과 PlayerPrefs 저장·복원(로드맵 M1~M5), 로컬 봇 플레이어, 고기 드롭·변이·접촉 처치 생태계(M6), 랭킹·머리 위 닉네임·포만 게이지·설정 버튼·대시 버튼 HUD(M7)입니다.
+아직 온라인 게임플레이 대부분과 자동화된 테스트 파이프라인은 준비되지 않았습니다. 클라이언트 WebGL 빌드·배포는 GitHub Actions로 자동화했습니다(위 "웹 배포"). 현재 구현된 것은 클라이언트–서버 연결과 Ping/Pong RTT 측정, 로컬 이동·대시와 네 가지 조작 입력, 맵 경계·초식 먹이 리젠·자석 흡수·성장·카메라 줌, 포만 감소·굶주림 사망·결과 화면·첫 화면 복귀, 첫 화면의 외형·닉네임·조작 선택과 PlayerPrefs 저장·복원(로드맵 M1~M5), 로컬 봇 플레이어, 고기 드롭·변이·접촉 처치 생태계(M6), 랭킹·머리 위 닉네임·포만 게이지·설정 버튼·대시 버튼 HUD(M7)입니다.
 
 ### 로컬 프로토타입 확인
 

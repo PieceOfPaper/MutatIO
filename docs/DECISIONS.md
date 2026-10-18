@@ -251,3 +251,12 @@
 - 결정: 봇 수준을 조절할 수 있게 합니다. 봇이 필요 없어지면 수준을 낮춰 자연스럽게 죽게 해서 사람끼리의 경쟁으로 넘어갑니다.
 - 결정: M6 전에 로컬 프로토타입에서 먼저 개발하고, 이후 서버로 옮겨 사람이 없을 때 봇이 돌아다니게 합니다. 봇 코드는 `Shared/`의 순수 C#으로 작성합니다.
 - 근거: 2026-10-17 사용자 지시.
+
+## 2026-10-18 — 클라이언트 GitHub Pages 배포
+
+- 상태: 승인
+- 결정: Unity WebGL 클라이언트는 GitHub Actions(GameCI `unity-builder`)로 빌드해 저장소의 GitHub Pages에 배포합니다. 워크플로는 `.github/workflows/deploy-client.yml`입니다.
+- 결정: `main`에 클라이언트 빌드와 관련된 파일(`Client/Assets`·`Client/Packages`·`Client/ProjectSettings`·`Shared`·워크플로 자신)이 푸시될 때 실행하고, Markdown만 바뀐 푸시는 건너뜁니다. Actions 탭에서 수동 실행도 할 수 있습니다.
+- 결정: 현재 배포 씬은 서버 없이 플레이 가능한 `Prototype.unity` 하나입니다. GitHub Pages는 `Content-Encoding` 헤더를 지정할 수 없으므로 빌드하는 동안만 Gzip + Decompression Fallback을 적용합니다(프로젝트 설정은 바꾸지 않음).
+- 결정: 서버 배포는 이후 별도 워크플로로 추가합니다. 서버 호스팅 대상은 아직 정하지 않았습니다.
+- 근거: 2026-10-18 사용자 지시.
